@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-             android:id="@+id/root"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
              android:layout_width="match_parent"
              android:layout_height="match_parent"
              android:background="#ffffff">
@@ -10,32 +11,39 @@
         android:layout_height="match_parent"
         android:layout_marginLeft="312px"
         android:layout_marginTop="107px"
-        android:background="@drawable/wangge"
-    />
+        android:background="#ffffff">
+
+
+        <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitXY"/>
+
+    </FrameLayout>
     <include android:id="@+id/draw_navigation_bar" layout="@layout/draw_navigation_bar_layout"/>
     <!--<com.dongwen.cn.electricity.view.DrawCanvasView-->
     <!--android:id="@+id/canvas_view" android:layout_width="match_parent"-->
     <!--android:layout_height="match_parent">-->
     <!--</com.dongwen.cn.electricity.view.DrawCanvasView>-->
-    <RelativeLayout android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="top|right"
-                    android:layout_marginLeft="312px"
-                    android:background="#ffffff"
-                    android:orientation="vertical">
-        <LinearLayout android:id="@+id/linearlayout"
-                      android:layout_width="wrap_content"
-                      android:layout_height="106px"
-                      android:layout_alignParentRight="true"
-                      android:layout_alignParentTop="true"
-                      android:layout_marginRight="30dp"
-                      android:orientation="horizontal">
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|right"
+        android:layout_marginLeft="312px"
+        android:background="#303a9f"
+        android:orientation="vertical">
 
-            <TextView android:layout_width="wrap_content"
-                      android:layout_height="match_parent"
-                      android:layout_gravity="center_vertical"
-                      android:gravity="center_vertical"
-                      android:text="元素颜色："/>
+        <LinearLayout
+            android:id="@+id/linearlayout"
+            android:layout_width="wrap_content"
+            android:layout_height="106px"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginRight="80dp"
+            android:orientation="horizontal"
+            android:visibility="invisible">
+
 
             <RadioGroup
                 android:id="@+id/radiogroup"
@@ -53,8 +61,8 @@
                     android:layout_gravity="center_vertical"
                     android:checked="true"
                     android:gravity="center_vertical"
-                    android:text="黑色"
-                />
+                    android:text="black" />
+
                 <RadioButton
                     android:id="@+id/rb_green"
                     android:layout_width="wrap_content"
@@ -62,8 +70,8 @@
                     android:layout_gravity="center_vertical"
                     android:layout_marginLeft="20px"
                     android:gravity="center_vertical"
-                    android:text="绿色"
-                />
+                    android:text="white" />
+
                 <RadioButton
                     android:id="@+id/rb_red"
                     android:layout_width="wrap_content"
@@ -71,113 +79,120 @@
                     android:layout_gravity="center_vertical"
                     android:layout_marginLeft="20px"
                     android:gravity="center_vertical"
-                    android:text="红色"
-                />
+                    android:text="red" />
 
             </RadioGroup>
 
-            <View android:layout_width="1dp" android:layout_height="match_parent"
-                  android:background="#000"/>
+            <View
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:background="#000" />
 
 
-            <ImageView android:id="@+id/text"
-                       android:layout_width="50px"
-                       android:layout_height="50px"
-                       android:layout_gravity="center_vertical"
-                       android:layout_marginLeft="40px"
-                       android:background="@drawable/draw_selector_bg"
-                       android:clickable="true"
-                       android:focusable="true"
-                       android:scaleType="fitXY"
-                       android:src="@drawable/text_normal"/>
+            <ImageView
+                android:id="@+id/text"
+                android:layout_width="50px"
+                android:layout_height="50px"
+                android:layout_gravity="center_vertical"
+                android:layout_marginLeft="40px"
+                android:background="@drawable/draw_selector_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="fitXY"
+                android:src="@drawable/text_normal" />
 
-            <ImageView android:id="@+id/back"
-                       android:layout_width="50px"
-                       android:layout_height="50px"
-                       android:layout_gravity="center_vertical"
-                       android:layout_marginLeft="40px"
-                       android:background="@drawable/draw_selector_bg"
-                       android:clickable="true"
-                       android:focusable="true"
-                       android:scaleType="fitXY"
-                       android:src="@drawable/back"/>
 
-            <ImageView android:id="@+id/forward"
-                       android:layout_width="50px"
-                       android:layout_height="50px"
-                       android:layout_gravity="center_vertical"
-                       android:layout_marginLeft="40px"
-                       android:background="@drawable/draw_selector_bg"
-                       android:clickable="true"
-                       android:focusable="true"
-                       android:scaleType="fitXY"
-                       android:src="@drawable/forward"/>
+            <ImageView
+                android:id="@+id/clear"
+                android:layout_width="50px"
+                android:layout_height="50px"
+                android:layout_gravity="center_vertical"
+                android:layout_marginLeft="20px"
+                android:background="@drawable/draw_selector_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="fitXY"
+                android:src="@drawable/gallery_toolbar_chinabrush_press"
+                android:visibility="gone" />
 
-            <ImageView android:id="@+id/clear"
-                       android:layout_width="50px"
-                       android:layout_height="50px"
-                       android:layout_gravity="center_vertical"
-                       android:layout_marginLeft="20px"
-                       android:background="@drawable/draw_selector_bg" android:clickable="true"
-                       android:focusable="true"
-                       android:scaleType="fitXY"
-                       android:src="@drawable/gallery_toolbar_chinabrush_press"
-                       android:visibility="gone"/>
+            <ImageView
+                android:id="@+id/rotate"
+                android:layout_width="50px"
+                android:layout_height="50px"
+                android:layout_gravity="center_vertical"
+                android:layout_marginLeft="20px"
+                android:background="@drawable/draw_selector_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="fitXY"
+                android:src="@drawable/ic_menu_rotate_light_n" />
 
-            <ImageView android:id="@+id/rotate" android:layout_width="50px"
-                       android:layout_height="50px"
-                       android:layout_gravity="center_vertical"
-                       android:layout_marginLeft="20px"
-                       android:background="@drawable/draw_selector_bg"
-                       android:clickable="true"
-                       android:focusable="true"
-                       android:scaleType="fitXY" android:src="@drawable/ic_menu_rotate_light_n"
-            />
+            <ImageView
+                android:id="@+id/delete"
+                android:layout_width="50px"
+                android:layout_height="50px"
+                android:layout_gravity="center_vertical"
+                android:layout_marginLeft="20px"
+                android:background="@drawable/draw_selector_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="fitXY"
+                android:src="@drawable/actionbar_ic_delete" />
 
-            <ImageView android:id="@+id/delete" android:layout_width="50px"
-                       android:layout_height="50px"
-                       android:layout_gravity="center_vertical"
-                       android:layout_marginLeft="20px"
-                       android:background="@drawable/draw_selector_bg"
-                       android:clickable="true"
-                       android:focusable="true"
-                       android:scaleType="fitXY" android:src="@drawable/actionbar_ic_delete"
-            />
-            <ImageView android:id="@+id/copy"
-                       android:layout_width="50px"
-                       android:layout_height="50px"
-                       android:layout_gravity="center_vertical"
-                       android:layout_marginLeft="20px"
-                       android:background="@drawable/draw_selector_bg"
-                       android:clickable="true"
-                       android:focusable="true"
-                       android:scaleType="fitXY"
-                       android:src="@drawable/actionbar_ic_copy"
-            />
-            <ImageView android:id="@+id/cancel" android:layout_width="50px"
-                       android:layout_height="50px"
-                       android:layout_gravity="center_vertical"
-                       android:layout_marginLeft="20px"
-                       android:background="@drawable/draw_selector_bg"
-                       android:clickable="true"
-                       android:focusable="true"
-                       android:scaleType="fitXY"
-                       android:src="@drawable/actionbar_ic_cancel"
-            />
-            <ImageView android:id="@+id/done" android:layout_width="50px"
-                       android:layout_height="50px"
-                       android:layout_gravity="center_vertical"
-                       android:layout_marginLeft="20px"
-                       android:background="@drawable/draw_selector_bg"
-                       android:clickable="true"
-                       android:focusable="true"
-                       android:scaleType="fitXY"
-                       android:src="@drawable/actionbar_ic_done"
-            />
+            <ImageView
+                android:id="@+id/copy"
+                android:layout_width="50px"
+                android:layout_height="50px"
+                android:layout_gravity="center_vertical"
+                android:layout_marginLeft="20px"
+                android:background="@drawable/draw_selector_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="fitXY"
+                android:src="@drawable/actionbar_ic_copy" />
+
+            <ImageView
+                android:id="@+id/cancel"
+                android:layout_width="50px"
+                android:layout_height="50px"
+                android:layout_gravity="center_vertical"
+                android:layout_marginLeft="20px"
+                android:background="@drawable/draw_selector_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="fitXY"
+                android:src="@drawable/actionbar_ic_cancel" />
+
+            <ImageView
+                android:id="@+id/done"
+                android:layout_width="50px"
+                android:layout_height="50px"
+                android:layout_gravity="center_vertical"
+                android:layout_marginLeft="20px"
+                android:background="@drawable/draw_selector_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="fitXY"
+                android:src="@drawable/actionbar_ic_done" />
         </LinearLayout>
-        <View android:layout_width="match_parent"
-              android:layout_height="1px"
-              android:layout_below="@+id/linearlayout"
-              android:background="#11161d"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1px"
+            android:layout_below="@+id/linearlayout"
+            android:background="#11161d" />
+
+        <CheckedTextView
+            android:id="@+id/checkedTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="42dp"
+            android:layout_marginStart="42dp"
+            android:checkMark="@color/colorPrimary"
+            android:text="Allow listener"
+            android:textColor="@android:color/holo_orange_light" />
     </RelativeLayout>
 </FrameLayout>

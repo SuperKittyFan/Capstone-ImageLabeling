@@ -9,16 +9,20 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.VectorDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.view.ViewPager;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
@@ -28,6 +32,7 @@ import android.widget.ImageView;
 import android.widget.RadioGroup;
 
 import com.lee.drawlayoutsample.utils.LogUtils;
+import com.squareup.picasso.Picasso;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -46,6 +51,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private final int DEGREE_270 = 270;
     private ScaleGestureDetector mScaleGestureDetector;
     private ScaleGestureListener mScaleGestureListener = new ScaleGestureListener();
+    private final int ADJUST_ALL = 1;
 
     private Set<View> mViewList = new HashSet<View>();
     private Set<View> mFocusViewList = new HashSet<View>();
@@ -227,26 +233,18 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             }
         });
 
+        mContent.setOnTouchListener(null);
         mScaleGestureDetector = new ScaleGestureDetector(this, mScaleGestureListener);
-        ImageView allImageView = (ImageView) findViewById(R.id.allIcon);
-        allImageView.setOnTouchListener(mTouchListener);
-        allImageView.setOnLongClickListener(mLongClickListener);
-        ImageView smileImageView = (ImageView) findViewById(R.id.smileIcon);
-        smileImageView.setOnTouchListener(mTouchListener);
-        smileImageView.setOnLongClickListener(mLongClickListener);
-        ImageView jewelryImageView = (ImageView) findViewById(R.id.jewelryIcon);
-        jewelryImageView.setOnTouchListener(mTouchListener);
-        jewelryImageView.setOnLongClickListener(mLongClickListener);
-        ImageView hotImageView = (ImageView) findViewById(R.id.hotIcon);
-        hotImageView.setOnTouchListener(mTouchListener);
-        hotImageView.setOnLongClickListener(mLongClickListener);
+
 
         ImageView lineImageView = (ImageView) findViewById(R.id.lineIcon);
         lineImageView.setOnTouchListener(mTouchListener);
-        lineImageView.setOnLongClickListener(mLongClickListener);
+        lineImageView.setOnClickListener(mSquareBarClickListener);
         ImageView rect = (ImageView) findViewById(R.id.rectIcon);
-        rect.setOnTouchListener(mTouchListener);
-        rect.setOnLongClickListener(mLongClickListener);
+        //rect.setOnTouchListener(mTouchListener);
+        rect.setOnClickListener(mSquareBarClickListener);
+
+
 
 
         findViewById(R.id.clear).setOnClickListener(this);
@@ -261,13 +259,24 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         mTextTools.setOnClickListener(this);
         mViewList.clear();
 
+        final ImageView backgroundView = (ImageView) findViewById(R.id.imageView);
+        Drawable bitmap = ContextCompat.getDrawable(this, R.drawable.example);
+        backgroundView.setImageDrawable(bitmap);
+
+        Picasso.with(backgroundView.getContext())
+                .load("http://67.216.209.114/icons/test1.jpg")
+                .error(R.drawable.example)
+                .into(backgroundView);
         layoutViews();
     }
 
     private void layoutViews() {
 
         mViewList.clear();
-        mContent.removeAllViews();
+
+
+        //mContent.removeAllViews();
+
 
         if (mInfoList != null) {
             LogUtils.v("mInfoList : " + mInfoList.toString());
@@ -338,18 +347,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     public void setImageResource(ImageView v, boolean focus) {
         ViewInfo viewInfo = (ViewInfo) v.getTag();
         switch (viewInfo.id) {
-            case R.id.allIcon:
-                realSetImageResource(v, viewInfo, focus, R.drawable.all_selected, R.drawable.ic_all_black, R.drawable.ic_all_green, R.drawable.ic_all_red);
-                break;
-            case R.id.smileIcon:
-                realSetImageResource(v, viewInfo, focus, R.drawable.smile_selected, R.drawable.ic_smile_black, R.drawable.ic_smile_green, R.drawable.ic_smile_red);
-                break;
-            case R.id.jewelryIcon:
-                realSetImageResource(v, viewInfo, focus, R.drawable.jewelry_selected, R.drawable.ic_jewelry_black, R.drawable.ic_jewelry_green, R.drawable.ic_jewelry_red);
-                break;
-            case R.id.hotIcon:
-                realSetImageResource(v, viewInfo, focus, R.drawable.hot_selected, R.drawable.ic_hot_black, R.drawable.ic_hot_green, R.drawable.ic_hot_red);
-                break;
+
 
             case R.id.lineIcon:
 
@@ -789,9 +787,9 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         mCurrentImageView.startAnimation(translateAnimation);
     }
 
-    private View.OnLongClickListener mLongClickListener = new View.OnLongClickListener() {
+    private View.OnClickListener mSquareBarClickListener = new View.OnClickListener() {
         @Override
-        public boolean onLongClick(View v) {
+        public void onClick(View v){
             final ImageView imageView = new ImageView(MainActivity.this);
             mCurrentImageView = imageView;
             ViewInfo viewInfo = new ViewInfo(v.getId(), 0);
@@ -805,13 +803,13 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             v.getLocationOnScreen(location);
             locationX = location[0];
             locationY = location[1];
-            imageView.setX(locationX + 5);
-            imageView.setY(locationY + 5);
-            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(v.getWidth(), v.getHeight());
+            imageView.setX(locationX + 500);
+            imageView.setY(locationY + 500);
+            float temp = v.getWidth();
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(v.getWidth()*4, v.getHeight()*4);
             mRootView.addView(imageView, params);
             mViewList.add(imageView);
             imageView.setOnTouchListener(new MyTouchListener(imageView));
-            return true;
         }
     };
 
@@ -934,12 +932,12 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     } else if (viewInfo.id == R.id.rectIcon && mFocusViewList.contains(imageView)) {
                         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) imageView.getLayoutParams();
                         params.width = imageW + (int) disX;
-                        if (params.width < 5) {
-                            params.width = 5;
+                        if (params.width < 50) {
+                            params.width = 50;
                         }
                         params.height = imageH + (int) disY;
-                        if (params.height < 5) {
-                            params.height = 5;
+                        if (params.height < 50) {
+                            params.height = 50;
                         }
                         imageView.requestLayout();
                     } else {
