@@ -26,10 +26,12 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.RadioGroup;
+import android.widget.Toast;
 
 import com.lee.drawlayoutsample.utils.LogUtils;
 import com.squareup.picasso.Picasso;
@@ -55,6 +57,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
     private Set<View> mViewList = new HashSet<View>();
     private Set<View> mFocusViewList = new HashSet<View>();
+    private Set<View> mAdjustViewList = new HashSet<View>();
     private long downTime = 0;
     private float downX = 0f;
     private float downY = 0f;
@@ -73,6 +76,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private int mStatusBarHeight = 0;
     private FrameLayout mRootView;
     private ImageView mCurrentImageView;
+    private boolean canvasZoomEnabled=false;
 
     private Bitmap mLineBitmap;
     private Bitmap mLineBitmapBlack;
@@ -131,120 +135,26 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         mContentLayoutParams.width = mDisplayMetrics.widthPixels - 312;
         mContentLayoutParams.height = mDisplayMetrics.heightPixels - mStatusBarHeight - 107;
 
-        mContent.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                mScaleGestureDetector.onTouchEvent(event);
-                int action = event.getAction();
-                switch (action) {
-                    case MotionEvent.ACTION_DOWN:
-                        mContentDownX = event.getX();
-                        mContentDownY = event.getY();
-                        for (View view : mViewList) {
-                            if (((ViewInfo) view.getTag()).id == R.id.rectIcon) {
-                                Log.d(TAG, "rectIcon onDown...");
-                                view.setBackgroundResource(R.drawable.border_shape);
-                            } else {
-                                Log.i(TAG, "not rectIcon onDown...");
-                                view.setBackgroundColor(Color.TRANSPARENT);
-                            }
-                            if (((ViewInfo) view.getTag()).id == R.id.rectIcon) {
-                                view.setOnTouchListener(new MyTouchListener((ImageView) view));
-                                int[] location = new int[2];
-                                view.getLocationOnScreen(location);
-                                Rect rect = new Rect();
-                                rect.left = location[0];
-                                rect.right = location[0] + view.getWidth();
-                                rect.top = location[1];
-                                rect.bottom = location[1] + view.getHeight();
-                                if (rect.contains((int) event.getX(), (int) event.getY())) {
-                                    view.setBackgroundResource(R.drawable.border_shape_blue);
-                                }
-                            }
-                        }
-                        mFocusViewList.clear();
-                        mMoved = true;
-                        return true;
-                    case MotionEvent.ACTION_MOVE:
-                        int w = mContent.getWidth();
-                        int h = mContent.getHeight();
-                        float maxW = (w * (mCurrentScale - 1f)) / 2;
-                        float maxH = (h * (mCurrentScale - 1f)) / 2;
-                        if (event.getPointerCount() <= 1 && mCurrentScale > 1f && mMoved) {
-                            Log.e(TAG, "move");
-                            mMoved = true;
-                            float disX = mContentDownX - event.getX();
-                            float disY = mContentDownY - event.getY();
-                            if (((int) disY + mContent.getScrollY()) >= -maxH
-                                    && ((int) disY + mContent.getScrollY()) <= maxH
-                                    && ((int) disX + mContent.getScrollX()) >= -maxW
-                                    && ((int) disX + mContent.getScrollX()) <= maxW) {
-                                mContent.scrollBy((int) disX, (int) disY);
-                            }
-                            mContentDownX = event.getX();
-                            mContentDownY = event.getY();
-                            return true;
-                        } else {
-                            Log.e(TAG, "not move");
-                            mMoved = false;
-                        }
-                        return false;
-                    case MotionEvent.ACTION_UP:
 
-                        mMoved = false;
-
-                        if (mSelectTextTools) {
-
-                            float x = event.getRawX();
-                            float y = event.getRawY();
-                            Log.i(TAG, "x: " + x + "### y：" + y);
-
-                            if (x <= 312 || x >= 1920 || y <= 106 || y >= 1200) {
-                                Log.d(TAG, "不在画布区域内 x: " + x + "### y：" + y);
-                                return true;
-                            } else {
-                                EditText editText = new EditText(MainActivity.this);
-                                editText.requestFocus();
-                                editText.setX(x - 312);
-                                editText.setY(y - 106);
-                                editText.setId(mViewList.size() + 1);
-                                ViewInfo viewInfo = new EditTextInfo(editText.getId(), 0);
-                                viewInfo.realId = ++mRealInfoId;
-                                viewInfo.type = ViewInfo.TYPE_EDITTEXT;
-                                viewInfo.x = editText.getX();
-                                viewInfo.y = editText.getY();
-                                editText.setTag(viewInfo);
-
-                                Log.d(TAG, "editTextId : " + editText.getId());
-                                mViewList.add(editText);
-                                editText.setBackgroundResource(R.drawable.border_shape_focus);
-                                FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-                                mContent.addView(editText, layoutParams);
-                                createMemento(editText, false, true);
-
-                            }
-
-                        }
-                        return false;
-                    default:
-                        break;
-                }
-                return false;
-            }
-        });
 
         mContent.setOnTouchListener(null);
+
         mScaleGestureDetector = new ScaleGestureDetector(this, mScaleGestureListener);
 
 
         ImageView lineImageView = (ImageView) findViewById(R.id.lineIcon);
-        lineImageView.setOnTouchListener(mTouchListener);
-        lineImageView.setOnClickListener(mSquareBarClickListener);
+        lineImageView.setOnTouchListener(null);
+        lineImageView.setOnClickListener(null);
         ImageView rect = (ImageView) findViewById(R.id.rectIcon);
         //rect.setOnTouchListener(mTouchListener);
         rect.setOnClickListener(mSquareBarClickListener);
 
 
+        Button edListener = findViewById(R.id.button);
+        edListener.setOnClickListener(medOnClickListener);
+
+        Button resetListener = findViewById(R.id.button4);
+        resetListener.setOnClickListener(mResetListener);
 
 
         findViewById(R.id.clear).setOnClickListener(this);
@@ -461,6 +371,10 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     removeViews(view);
                     createMemento(view, true, false);
                 }
+                for (View view : new ArrayList<View>(mAdjustViewList)){
+                    removeViews(view);
+                    createMemento(view, true, false);
+                }
                 mContent.requestLayout();
                 break;
             case R.id.copy:
@@ -604,6 +518,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         mContent.removeView(view);
         mViewList.remove(view);
         mFocusViewList.remove(view);
+        mAdjustViewList.remove(view);
     }
 
 
@@ -803,12 +718,14 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             v.getLocationOnScreen(location);
             locationX = location[0];
             locationY = location[1];
-            imageView.setX(locationX + 500);
-            imageView.setY(locationY + 500);
-            float temp = v.getWidth();
+            imageView.setX(locationX + 300);
+            imageView.setY(locationY + 300);
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(v.getWidth()*4, v.getHeight()*4);
-            mRootView.addView(imageView, params);
+            mContent.addView(imageView, params);
             mViewList.add(imageView);
+            mAdjustViewList.clear();
+            mFocusViewList.clear();
+            mAdjustViewList.add(imageView);
             imageView.setOnTouchListener(new MyTouchListener(imageView));
         }
     };
@@ -901,7 +818,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     getLineCoordinate();
 
                     if (viewInfo.id == R.id.rectIcon) {
-                        mRectList = getNeedMoveView(srcRect, imageView);
+                        //mRectList = getNeedMoveView(srcRect, imageView);
                     }
                     return true;
                 case MotionEvent.ACTION_MOVE:
@@ -940,143 +857,142 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                             params.height = 50;
                         }
                         imageView.requestLayout();
-                    } else {
-                        if (viewInfo.id == R.id.rectIcon) {
-                            imageView.setX(imageView.getX() + disX);
-                            imageView.setY(imageView.getY() + disY);
-                            if (mRectList != null) {
-                                for (View view : mRectList) {
-                                    view.setX(view.getX() + disX);
-                                    view.setY(view.getY() + disY);
-                                }
-                            }
-                        } else {
-                            if (mFocusViewList.contains(imageView)) {
-                                FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) imageView.getLayoutParams();
-                                params.width = imageW + (int) disX;
-                                params.height = imageH + (int) disY;
-                                imageView.requestLayout();
-                            } else { //处理图标拖动
-
-                                imageView.setX(imageView.getX() + disX - OFFSET);
-                                imageView.setY(imageView.getY() + disY - OFFSET);
-                                imageView.setBackgroundResource(android.R.color.transparent);
-
-                                targetX = imageView.getX();
-                                targetY = imageView.getY();
-                                targetRight = targetX + imageW;
-                                targetBottom = targetY + imageH;
-//                                LogUtils.d("ACTION_MOVE " + (int) targetX + "," + (int) targetY + "," + (int) targetRight + "," + (int) targetBottom);
-
-                                for (int i = 0; i < mTops.size(); i++) {
-                                    float consultTop = mTops.get(i);
-                                    View line = mLines.get(i);
-                                    ViewInfo lineInfo = (ViewInfo) line.getTag();
-                                    if ((lineInfo.degree == 90 || lineInfo.degree == 270) && Math.abs(consultTop - targetBottom) <= LIMIT) { //在竖线上面
-                                        int lineMiddleX = (2 * mRights.get(i) - line.getHeight()) / 2;//获取到线条的y/2
-                                        if (disX >= 0) { //从左往右
-                                            if (Math.abs(mLefts.get(i) - targetRight) <= OFFSET) {
-                                                imageView.setX(lineMiddleX - imageW / 2);
-                                                imageView.setY(consultTop - imageH + PADDING);
-                                                imageView.setBackgroundResource(R.drawable.border_shape_green);
-                                                Log.d(TAG, "竖线上边匹配成功 从左往右 targetBottom : " + targetBottom + ", consultTop: " + consultTop);
-                                            }
-                                        } else {
-                                            if (Math.abs(targetX - mRights.get(i)) <= OFFSET) {
-                                                imageView.setX(lineMiddleX - imageW / 2);
-                                                imageView.setY(consultTop - imageH + PADDING);
-                                                imageView.setBackgroundResource(R.drawable.border_shape_green);
-                                                Log.d(TAG, "竖线上边匹配成功 从右往左 targetBottom : " + targetBottom + ", consultTop: " + consultTop);
-                                            }
-                                        }
-                                    }
-                                }
-
-                                for (int i = 0; i < mBottoms.size(); i++) {
-                                    float consultBottom = mBottoms.get(i);
-                                    View line = mLines.get(i);
-                                    ViewInfo lineInfo = (ViewInfo) line.getTag();
-                                    if ((lineInfo.degree == 90 || lineInfo.degree == 270) && Math.abs(targetY - consultBottom) <= LIMIT) {
-                                        int lineMiddleX = (2 * mRights.get(i) - line.getHeight()) / 2;//获取到线条的y/2
-                                        if (disX >= 0) { //从左往右
-                                            if (Math.abs(mLefts.get(i) - targetRight) <= OFFSET) {
-                                                imageView.setX(lineMiddleX - imageW / 2);
-                                                imageView.setY(consultBottom - PADDING);
-                                                imageView.setBackgroundResource(R.drawable.border_shape_green);
-                                                Log.i(TAG, "竖线下边匹配成功 从左往右 targetY : " + targetY + ", consultBottom : " + consultBottom);
-                                            }
-                                        } else {
-                                            if (Math.abs(targetX - mRights.get(i)) <= OFFSET) {
-                                                imageView.setX(lineMiddleX - imageW / 2);
-                                                imageView.setY(consultBottom - PADDING);
-                                                imageView.setBackgroundResource(R.drawable.border_shape_green);
-                                                Log.i(TAG, "竖线下边匹配成功 从右往左 targetY : " + targetY + ", consultBottom : " + consultBottom);
-                                            }
-                                        }
-                                    }
-                                }
-
-                                for (int i = 0; i < mLefts.size(); i++) {
-                                    float consultLeft = mLefts.get(i);
-                                    View line = mLines.get(i);
-                                    ViewInfo lineInfo = (ViewInfo) line.getTag();
-                                    if ((lineInfo.degree == 0 || lineInfo.degree == 180) && Math.abs(consultLeft - targetRight) <= LIMIT) {
-                                        int lineMiddleY = (2 * mBottoms.get(i) - line.getHeight()) / 2;//获取到线条的y/2
-                                        int newY = lineMiddleY - imageH / 2;
-                                        if (disY >= 0) { //从上到下
-                                            if (Math.abs(mTops.get(i) - targetBottom) <= OFFSET) {
-                                                imageView.setX(consultLeft - imageW + PADDING);
-                                                imageView.setY(newY);
-                                                imageView.setBackgroundResource(R.drawable.border_shape_green);
-                                                Log.d(TAG, "横线左边匹配成功 从上往下 targetRight : " + targetRight + " , consultLeft: " + consultLeft);
-                                            }
-                                        } else {
-                                            if (Math.abs(targetY - mBottoms.get(i)) <= OFFSET) {
-                                                imageView.setX(consultLeft - imageW + PADDING);
-                                                imageView.setY(newY);
-                                                imageView.setBackgroundResource(R.drawable.border_shape_green);
-                                                Log.d(TAG, "横线左边匹配成功 从下往上 targetRight : " + targetRight + " , consultLeft: " + consultLeft);
-                                            }
-                                        }
-                                    }
-                                }
-
-                                for (int i = 0; i < mRights.size(); i++) {
-                                    float consultRight = mRights.get(i);
-                                    View line = mLines.get(i);
-                                    ViewInfo lineInfo = (ViewInfo) line.getTag();
-                                    if ((lineInfo.degree == 0 || lineInfo.degree == 180) && Math.abs(targetX - consultRight) <= LIMIT) {
-                                        int lineMiddleY = (2 * mBottoms.get(i) - line.getHeight()) / 2;//获取到线条的y/2
-                                        int newY = lineMiddleY - imageH / 2;
-                                        Log.d(TAG, "lineMiddleY : " + lineMiddleY + ", newY: " + newY);
-                                        if (disY >= 0) { //从上往下 1.如果targetBottom - con
-                                            if (Math.abs(mTops.get(i) - targetBottom) <= OFFSET) {
-                                                imageView.setX(consultRight - PADDING);
-                                                imageView.setY(newY);
-                                                imageView.setBackgroundResource(R.drawable.border_shape_green);
-                                                Log.d(TAG, "横线右边匹配成功 从上往下 targetX : " + targetX + " , consultRight: " + consultRight);
-                                            }
-                                        } else {
-                                            if (Math.abs(targetY - mBottoms.get(i)) <= OFFSET) {
-                                                imageView.setX(consultRight - PADDING);
-                                                imageView.setY(newY);
-                                                imageView.setBackgroundResource(R.drawable.border_shape_green);
-                                                Log.d(TAG, "横线右边匹配成功 从下往上 targetX : " + targetX + " , consultRight: " + consultRight);
-                                            }
-                                        }
-
-                                    }
-                                }
-
+                    } else if(viewInfo.id == R.id.rectIcon && mAdjustViewList.contains(imageView)) {
+                        imageView.setX(imageView.getX() + disX);
+                        imageView.setY(imageView.getY() + disY);
+                        if (mRectList != null) {
+                            for (View view : mRectList) {
+                                view.setX(view.getX() + disX);
+                                view.setY(view.getY() + disY);
                             }
                         }
                     }
+//                    else {
+//                        if (mFocusViewList.contains(imageView)) {
+//                            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) imageView.getLayoutParams();
+//                            params.width = imageW + (int) disX;
+//                            params.height = imageH + (int) disY;
+//                            imageView.requestLayout();
+//                        } else { //处理图标拖动
+//
+//                            imageView.setX(imageView.getX() + disX - OFFSET);
+//                            imageView.setY(imageView.getY() + disY - OFFSET);
+//                            imageView.setBackgroundResource(android.R.color.transparent);
+//
+//                            targetX = imageView.getX();
+//                            targetY = imageView.getY();
+//                            targetRight = targetX + imageW;
+//                            targetBottom = targetY + imageH;
+////                                LogUtils.d("ACTION_MOVE " + (int) targetX + "," + (int) targetY + "," + (int) targetRight + "," + (int) targetBottom);
+//
+//                            for (int i = 0; i < mTops.size(); i++) {
+//                                float consultTop = mTops.get(i);
+//                                View line = mLines.get(i);
+//                                ViewInfo lineInfo = (ViewInfo) line.getTag();
+//                                if ((lineInfo.degree == 90 || lineInfo.degree == 270) && Math.abs(consultTop - targetBottom) <= LIMIT) { //在竖线上面
+//                                    int lineMiddleX = (2 * mRights.get(i) - line.getHeight()) / 2;//获取到线条的y/2
+//                                    if (disX >= 0) { //从左往右
+//                                        if (Math.abs(mLefts.get(i) - targetRight) <= OFFSET) {
+//                                            imageView.setX(lineMiddleX - imageW / 2);
+//                                            imageView.setY(consultTop - imageH + PADDING);
+//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
+//                                            Log.d(TAG, "竖线上边匹配成功 从左往右 targetBottom : " + targetBottom + ", consultTop: " + consultTop);
+//                                        }
+//                                    } else {
+//                                        if (Math.abs(targetX - mRights.get(i)) <= OFFSET) {
+//                                            imageView.setX(lineMiddleX - imageW / 2);
+//                                            imageView.setY(consultTop - imageH + PADDING);
+//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
+//                                            Log.d(TAG, "竖线上边匹配成功 从右往左 targetBottom : " + targetBottom + ", consultTop: " + consultTop);
+//                                        }
+//                                    }
+//                                }
+//                            }
+//
+//                            for (int i = 0; i < mBottoms.size(); i++) {
+//                                float consultBottom = mBottoms.get(i);
+//                                View line = mLines.get(i);
+//                                ViewInfo lineInfo = (ViewInfo) line.getTag();
+//                                if ((lineInfo.degree == 90 || lineInfo.degree == 270) && Math.abs(targetY - consultBottom) <= LIMIT) {
+//                                    int lineMiddleX = (2 * mRights.get(i) - line.getHeight()) / 2;//获取到线条的y/2
+//                                    if (disX >= 0) { //从左往右
+//                                        if (Math.abs(mLefts.get(i) - targetRight) <= OFFSET) {
+//                                            imageView.setX(lineMiddleX - imageW / 2);
+//                                            imageView.setY(consultBottom - PADDING);
+//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
+//                                            Log.i(TAG, "竖线下边匹配成功 从左往右 targetY : " + targetY + ", consultBottom : " + consultBottom);
+//                                        }
+//                                    } else {
+//                                        if (Math.abs(targetX - mRights.get(i)) <= OFFSET) {
+//                                            imageView.setX(lineMiddleX - imageW / 2);
+//                                            imageView.setY(consultBottom - PADDING);
+//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
+//                                            Log.i(TAG, "竖线下边匹配成功 从右往左 targetY : " + targetY + ", consultBottom : " + consultBottom);
+//                                        }
+//                                    }
+//                                }
+//                            }
+//
+//                            for (int i = 0; i < mLefts.size(); i++) {
+//                                float consultLeft = mLefts.get(i);
+//                                View line = mLines.get(i);
+//                                ViewInfo lineInfo = (ViewInfo) line.getTag();
+//                                if ((lineInfo.degree == 0 || lineInfo.degree == 180) && Math.abs(consultLeft - targetRight) <= LIMIT) {
+//                                    int lineMiddleY = (2 * mBottoms.get(i) - line.getHeight()) / 2;//获取到线条的y/2
+//                                    int newY = lineMiddleY - imageH / 2;
+//                                    if (disY >= 0) { //从上到下
+//                                        if (Math.abs(mTops.get(i) - targetBottom) <= OFFSET) {
+//                                            imageView.setX(consultLeft - imageW + PADDING);
+//                                            imageView.setY(newY);
+//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
+//                                            Log.d(TAG, "横线左边匹配成功 从上往下 targetRight : " + targetRight + " , consultLeft: " + consultLeft);
+//                                        }
+//                                    } else {
+//                                        if (Math.abs(targetY - mBottoms.get(i)) <= OFFSET) {
+//                                            imageView.setX(consultLeft - imageW + PADDING);
+//                                            imageView.setY(newY);
+//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
+//                                            Log.d(TAG, "横线左边匹配成功 从下往上 targetRight : " + targetRight + " , consultLeft: " + consultLeft);
+//                                        }
+//                                    }
+//                                }
+//                            }
+//
+//                            for (int i = 0; i < mRights.size(); i++) {
+//                                float consultRight = mRights.get(i);
+//                                View line = mLines.get(i);
+//                                ViewInfo lineInfo = (ViewInfo) line.getTag();
+//                                if ((lineInfo.degree == 0 || lineInfo.degree == 180) && Math.abs(targetX - consultRight) <= LIMIT) {
+//                                    int lineMiddleY = (2 * mBottoms.get(i) - line.getHeight()) / 2;//获取到线条的y/2
+//                                    int newY = lineMiddleY - imageH / 2;
+//                                    Log.d(TAG, "lineMiddleY : " + lineMiddleY + ", newY: " + newY);
+//                                    if (disY >= 0) { //从上往下 1.如果targetBottom - con
+//                                        if (Math.abs(mTops.get(i) - targetBottom) <= OFFSET) {
+//                                            imageView.setX(consultRight - PADDING);
+//                                            imageView.setY(newY);
+//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
+//                                            Log.d(TAG, "横线右边匹配成功 从上往下 targetX : " + targetX + " , consultRight: " + consultRight);
+//                                        }
+//                                    } else {
+//                                        if (Math.abs(targetY - mBottoms.get(i)) <= OFFSET) {
+//                                            imageView.setX(consultRight - PADDING);
+//                                            imageView.setY(newY);
+//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
+//                                            Log.d(TAG, "横线右边匹配成功 从下往上 targetX : " + targetX + " , consultRight: " + consultRight);
+//                                        }
+//                                    }
+//
+//                                }
+//                            }
+//
+//                        }
+//                    }
                     return true;
                 case MotionEvent.ACTION_UP:
                     float x = imageView.getX();
                     float y = imageView.getY();
-
-                    if (System.currentTimeMillis() - downTime > 1500) {
+                    long time = System.currentTimeMillis() - downTime;
+                    if (time > 200) {
                         //it's long click
                     } else {
                         if (viewInfo.id == R.id.rectIcon && mRectList != null && !mRectList.isEmpty()) {
@@ -1117,8 +1033,23 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                                 imageView.requestLayout();
                             }
 //                            removeViews(v);
-                        } else {
-                            mFocusViewList.add(imageView);
+                        }
+                        else {
+                            if (mAdjustViewList.contains(imageView)) {
+                                mFocusViewList.clear();
+                                mFocusViewList.add(imageView);
+                                mAdjustViewList.clear();
+                                imageView.setBackgroundResource(R.drawable.border_shape_green);
+                                Toast.makeText(MainActivity.this,"resize mode",Toast.LENGTH_SHORT).show();
+                            }
+                            else{
+                                mAdjustViewList.clear();
+                                mAdjustViewList.add(imageView);
+                                mFocusViewList.clear();
+                                imageView.setBackgroundResource(R.drawable.border_shape_blue);
+                                Toast.makeText(MainActivity.this,"replace mode",Toast.LENGTH_SHORT).show();
+                            }
+
                             if (Math.abs(x - downImageX) <= 5 && Math.abs(y - downImageY) <= 5) {
                                 imageView.setBackgroundResource(R.drawable.border_shape_blue);
                             }
@@ -1299,8 +1230,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             float scale = mCurrentScale + dScale;
             if (scale > 4.0f) {
                 scale = 4.0f;
-            } else if (scale < 0.5f) {
-                scale = 0.5f;
+            } else if (scale < 1f) {
+                scale = 1f;
             }
             mContent.setScaleX(scale);
             mContent.setScaleY(scale);
@@ -1319,4 +1250,141 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
         }
     }
+
+    private View.OnClickListener medOnClickListener = new View.OnClickListener(){
+        @Override
+        public void onClick(View v){
+            if (!canvasZoomEnabled) {
+                mContent.setOnTouchListener(new View.OnTouchListener() {
+                    @Override
+                    public boolean onTouch(View v, MotionEvent event) {
+                        mScaleGestureDetector.onTouchEvent(event);
+                        int action = event.getAction();
+                        switch (action) {
+                            case MotionEvent.ACTION_DOWN:
+                                mContentDownX = event.getX();
+                                mContentDownY = event.getY();
+                                for (View view : mViewList) {
+//                                    if (((ViewInfo) view.getTag()).id == R.id.rectIcon) {
+//                                        Log.d(TAG, "rectIcon onDown...");
+//                                        view.setBackgroundResource(R.drawable.border_shape);
+//                                    } else {
+//                                        Log.i(TAG, "not rectIcon onDown...");
+//                                        view.setBackgroundColor(Color.TRANSPARENT);
+//                                    }
+//                                    if (((ViewInfo) view.getTag()).id == R.id.rectIcon) {
+//                                        view.setOnTouchListener(new MyTouchListener((ImageView) view));
+//                                        int[] location = new int[2];
+//                                        view.getLocationOnScreen(location);
+//                                        Rect rect = new Rect();
+//                                        rect.left = location[0];
+//                                        rect.right = location[0] + view.getWidth();
+//                                        rect.top = location[1];
+//                                        rect.bottom = location[1] + view.getHeight();
+//                                        if (rect.contains((int) event.getX(), (int) event.getY())) {
+//                                            view.setBackgroundResource(R.drawable.border_shape_blue);
+//                                        }
+//                                    }
+                                    view.setOnTouchListener(null);
+                                    view.setBackgroundResource(R.drawable.border_shape);
+                                }
+                                mFocusViewList.clear();
+                                mMoved = true;
+                                return true;
+                            case MotionEvent.ACTION_MOVE:
+                                int w = mContent.getWidth();
+                                int h = mContent.getHeight();
+                                float maxW = (w * (mCurrentScale - 1f)) / 2;
+                                float maxH = (h * (mCurrentScale - 1f)) / 2;
+                                if (event.getPointerCount() <= 1 && mCurrentScale > 1f && mMoved) {
+                                    Log.e(TAG, "move");
+                                    mMoved = true;
+                                    float disX = mContentDownX - event.getX();
+                                    float disY = mContentDownY - event.getY();
+                                    if (((int) disY + mContent.getScrollY()) >= -maxH
+                                            && ((int) disY + mContent.getScrollY()) <= maxH
+                                            && ((int) disX + mContent.getScrollX()) >= -maxW
+                                            && ((int) disX + mContent.getScrollX()) <= maxW) {
+                                        mContent.scrollBy((int) disX, (int) disY);
+                                    }
+                                    mContentDownX = event.getX();
+                                    mContentDownY = event.getY();
+                                    return true;
+                                } else {
+                                    Log.e(TAG, "not move");
+                                    mMoved = false;
+                                }
+                                return false;
+                            case MotionEvent.ACTION_UP:
+
+                                mMoved = false;
+
+                                if (mSelectTextTools) {
+
+                                    float x = event.getRawX();
+                                    float y = event.getRawY();
+                                    Log.i(TAG, "x: " + x + "### y：" + y);
+
+                                    if (x <= 312 || x >= 1920 || y <= 106 || y >= 1200) {
+                                        Log.d(TAG, "不在画布区域内 x: " + x + "### y：" + y);
+                                        return true;
+                                    } else {
+                                        EditText editText = new EditText(MainActivity.this);
+                                        editText.requestFocus();
+                                        editText.setX(x - 312);
+                                        editText.setY(y - 106);
+                                        editText.setId(mViewList.size() + 1);
+                                        ViewInfo viewInfo = new EditTextInfo(editText.getId(), 0);
+                                        viewInfo.realId = ++mRealInfoId;
+                                        viewInfo.type = ViewInfo.TYPE_EDITTEXT;
+                                        viewInfo.x = editText.getX();
+                                        viewInfo.y = editText.getY();
+                                        editText.setTag(viewInfo);
+
+                                        Log.d(TAG, "editTextId : " + editText.getId());
+                                        mViewList.add(editText);
+                                        editText.setBackgroundResource(R.drawable.border_shape_focus);
+                                        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+                                        mContent.addView(editText, layoutParams);
+                                        createMemento(editText, false, true);
+
+                                    }
+
+                                }
+                                return false;
+                            default:
+                                break;
+                        }
+                        return false;
+                    }
+                });
+
+                for (View view: mViewList){
+                    view.setOnTouchListener(null);
+                }
+
+                Toast.makeText(MainActivity.this, "listener enabled!", Toast.LENGTH_SHORT).show();
+            }
+            else {
+                mContent.setOnTouchListener(null);
+                for (View view: mViewList){
+                    view.setOnTouchListener(new MyTouchListener((ImageView) view));
+                }
+                Toast.makeText(MainActivity.this, "listener disabled!", Toast.LENGTH_SHORT).show();
+            }
+            canvasZoomEnabled = (!canvasZoomEnabled);
+        }
+    };
+
+    private View.OnClickListener mResetListener = new View.OnClickListener(){
+        @Override
+        public void onClick(View v){
+            mContent.scrollTo(0,0);
+            mContent.setScaleX(1f);
+            mContent.setScaleY(1f);
+            mCurrentScale=1f;
+        }
+    };
+
+
 }

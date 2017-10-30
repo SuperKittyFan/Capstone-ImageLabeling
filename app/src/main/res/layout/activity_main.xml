@@ -127,17 +127,7 @@
                 android:scaleType="fitXY"
                 android:src="@drawable/ic_menu_rotate_light_n" />
 
-            <ImageView
-                android:id="@+id/delete"
-                android:layout_width="50px"
-                android:layout_height="50px"
-                android:layout_gravity="center_vertical"
-                android:layout_marginLeft="20px"
-                android:background="@drawable/draw_selector_bg"
-                android:clickable="true"
-                android:focusable="true"
-                android:scaleType="fitXY"
-                android:src="@drawable/actionbar_ic_delete" />
+
 
             <ImageView
                 android:id="@+id/copy"
@@ -182,17 +172,31 @@
             android:layout_below="@+id/linearlayout"
             android:background="#11161d" />
 
-        <CheckedTextView
-            android:id="@+id/checkedTextView"
+        <Button
+            android:id="@+id/button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="48dp"
+            android:layout_marginStart="48dp"
+            android:background="#e4a726"
+            android:text="Listener"
+            android:textColor="#ffffff"
+            android:layout_alignParentTop="true"
             android:layout_alignParentLeft="true"
-            android:layout_alignParentStart="true"
-            android:layout_centerVertical="true"
-            android:layout_marginLeft="42dp"
-            android:layout_marginStart="42dp"
-            android:checkMark="@color/colorPrimary"
-            android:text="Allow listener"
-            android:textColor="@android:color/holo_orange_light" />
+            android:layout_alignParentStart="true" />
+
+        <Button
+            android:id="@+id/button4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="200dp"
+            android:layout_marginStart="200dp"
+            android:background="#e4a726"
+            android:text="resetcanvas"
+            android:textColor="#ffffff"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true" />
+
     </RelativeLayout>
 </FrameLayout>

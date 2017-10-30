@@ -32,17 +32,6 @@
                 />
             </RelativeLayout>
 
-
-        </LinearLayout>
-
-        <View android:layout_width="match_parent" android:layout_height="1px"
-              android:background="#11161d"/>
-
-        <LinearLayout android:layout_width="match_parent"
-                      android:layout_height="0dp"
-                      android:layout_weight="1"
-                      android:orientation="horizontal">
-
             <RelativeLayout
                 android:id="@+id/rect"
                 android:layout_width="0dp"
@@ -65,26 +54,27 @@
                       android:layout_height="0dp"
                       android:layout_weight="1"
                       android:orientation="horizontal">
+
             <RelativeLayout
 
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1">
-                <ImageView android:id="@+id/forward"
+                <ImageView
+                    android:id="@+id/delete"
                     android:layout_width="100px"
                     android:layout_height="100px"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginLeft="20px"
                     android:layout_centerInParent="true"
-                    android:layout_centerVertical="true"
-                    android:background="#ffffff"
+                    android:background="@drawable/draw_selector_bg"
                     android:clickable="true"
                     android:focusable="true"
                     android:scaleType="fitXY"
-                    android:src="@drawable/forward"/>
+                    android:src="@drawable/actionbar_ic_delete" />
             </RelativeLayout>
 
-
         </LinearLayout>
-
 
         <View android:layout_width="match_parent" android:layout_height="1px"
               android:background="#11161d"/>
@@ -112,6 +102,37 @@
 
             </RelativeLayout>
 
+            <RelativeLayout
+
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1">
+                <ImageView android:id="@+id/forward"
+                    android:layout_width="100px"
+                    android:layout_height="100px"
+                    android:layout_centerInParent="true"
+                    android:layout_centerVertical="true"
+                    android:background="#ffffff"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/forward"/>
+            </RelativeLayout>
+
+
+
+        </LinearLayout>
+
+
+        <View android:layout_width="match_parent" android:layout_height="1px"
+              android:background="#11161d"/>
+
+        <LinearLayout android:layout_width="match_parent"
+                      android:layout_height="0dp"
+                      android:layout_weight="1"
+                      android:orientation="horizontal">
+
+
 
         </LinearLayout>
 
@@ -122,18 +143,7 @@
                       android:layout_height="0dp"
                       android:layout_weight="1"
                       android:orientation="horizontal">
-            <RelativeLayout
 
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1">
-                <ImageView
-                           android:layout_width="100px"
-                           android:layout_height="100px"
-                           android:layout_centerInParent="true"
-                           android:scaleType="fitXY"
-                          />
-            </RelativeLayout>
 
             <RelativeLayout
 
