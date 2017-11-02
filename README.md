@@ -1,1 +1,1 @@
-# DrawLayoutSample
+# Huawei Capstone Design - Android frontend
