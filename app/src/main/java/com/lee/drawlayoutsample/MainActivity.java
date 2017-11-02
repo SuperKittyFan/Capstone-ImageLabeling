@@ -5,14 +5,18 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.VectorDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
@@ -33,12 +37,18 @@ import android.widget.ImageView;
 import android.widget.RadioGroup;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
 import com.lee.drawlayoutsample.utils.LogUtils;
 import com.squareup.picasso.Picasso;
 
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -51,6 +61,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private final int DEGREE_90 = 90;
     private final int DEGREE_180 = 180;
     private final int DEGREE_270 = 270;
+    private int realImageWidth = 0;
+    private int realImageHeight = 0;
     private ScaleGestureDetector mScaleGestureDetector;
     private ScaleGestureListener mScaleGestureListener = new ScaleGestureListener();
     private final int ADJUST_ALL = 1;
@@ -76,7 +88,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private int mStatusBarHeight = 0;
     private FrameLayout mRootView;
     private ImageView mCurrentImageView;
-    private boolean canvasZoomEnabled=false;
+    private boolean canvasZoomEnabled = false;
 
     private Bitmap mLineBitmap;
     private Bitmap mLineBitmapBlack;
@@ -93,6 +105,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private boolean mMoved = false;
     private boolean mSelectTextTools;
     private ImageView mTextTools;
+    private ImageView backgroundView;
     private List<Integer> mLefts = new ArrayList<Integer>();
     private List<Integer> mTops = new ArrayList<Integer>();
     private List<Integer> mRights = new ArrayList<Integer>();
@@ -112,6 +125,13 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private float mStartX;
     private float mStartY;
     private static final int STROKE_WIDTH = 5;
+    private URLInfo urlInfo=new URLInfo();
+    private LabelInfo labelInfo = new LabelInfo();
+    private URL url;
+
+    private int parseType;
+    public static final int PARSE_URLINFO=0;
+    public static final int PARSE_SQUARE=1;
 
 
     @Override
@@ -121,20 +141,23 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         setContentView(R.layout.activity_main);
         mOriginator = new MementoOriginator();
         mCreataker = new MementoCreataker();
-
-
+        try {
+            url = new URL("http://67.216.209.114/ask.php");
+        }
+        catch(Exception e) {
+        }
         mDisplayMetrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(mDisplayMetrics);
         mStatusBarHeight = getStatusBarHeight(this);
         mRootView = (FrameLayout) findViewById(R.id.root);
         mContent = (FrameLayout) findViewById(R.id.content);
+        backgroundView = (ImageView) findViewById(R.id.imageView);
 
         RadioGroup radioGroup = (RadioGroup) findViewById(R.id.radiogroup);
         radioGroup.setOnCheckedChangeListener(this);
         mContentLayoutParams = (FrameLayout.LayoutParams) mContent.getLayoutParams();
         mContentLayoutParams.width = mDisplayMetrics.widthPixels - 312;
         mContentLayoutParams.height = mDisplayMetrics.heightPixels - mStatusBarHeight - 107;
-
 
 
         mContent.setOnTouchListener(null);
@@ -165,19 +188,18 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         findViewById(R.id.done).setOnClickListener(this);
         findViewById(R.id.back).setOnClickListener(this);
         findViewById(R.id.forward).setOnClickListener(this);
+        findViewById(R.id.send_request).setOnClickListener(this);
         mTextTools = (ImageView) findViewById(R.id.text);
         mTextTools.setOnClickListener(this);
         mViewList.clear();
 
-        final ImageView backgroundView = (ImageView) findViewById(R.id.imageView);
-        Drawable bitmap = ContextCompat.getDrawable(this, R.drawable.example);
-        backgroundView.setImageDrawable(bitmap);
 
-        Picasso.with(backgroundView.getContext())
-                .load("http://67.216.209.114/icons/test1.jpg")
-                .error(R.drawable.example)
-                .into(backgroundView);
-        layoutViews();
+//start getting image and label data
+        parseType=PARSE_URLINFO;
+//        Drawable bitmap = ContextCompat.getDrawable(this, R.drawable.example);
+//        backgroundView.setImageDrawable(bitmap);
+        sendRequestWithHttpURLConnection();
+
     }
 
     private void layoutViews() {
@@ -188,53 +210,38 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         //mContent.removeAllViews();
 
 
-        if (mInfoList != null) {
-            LogUtils.v("mInfoList : " + mInfoList.toString());
-            for (ViewInfo viewInfo : mInfoList) {
+        if (labelInfo.getSquare()!=null){
+            for (Square square: labelInfo.getSquare()){
+                imageH=backgroundView.getHeight();
+                imageW=backgroundView.getWidth();
+                float xmax=square.getXmax();
+                float xmin=square.getXmin();
+                float ymax=square.getYmax();
+                float ymin=square.getYmin();
+                int realXmin = (int)(xmin*imageW/realImageWidth);//real: the location on the screen
+                int realYmin = (int)(ymin*imageH/realImageHeight);
+                int realXmax = (int)(xmax*imageW/realImageWidth);
+                int realYmax = (int)(ymax*imageH/realImageHeight);
+                float realWidth=realXmax-realXmin;
+                float realHeight=realYmax-realYmin;
 
-                ViewInfo newViewInfo;
+                mContentLayoutParams = new FrameLayout.LayoutParams((int)realWidth, (int)realHeight);
 
-                if (viewInfo.type == ViewInfo.TYPE_EDITTEXT) {
-                    newViewInfo = new EditTextInfo(viewInfo.id, viewInfo.degree);
+                ImageView imageView = new ImageView(MainActivity.this);
+                imageView.setScaleType(ImageView.ScaleType.FIT_XY);
+                imageView.setOnTouchListener(new MyTouchListener(imageView));
+                imageView.setTag(square);
+                imageView.setX(realXmin);
+                imageView.setY(realYmin);
+                imageView.setBackgroundResource(R.drawable.border_shape);
+                mViewList.add(imageView);
+                mAdjustViewList.clear();
+                mFocusViewList.clear();
+                mContent.addView(imageView, mContentLayoutParams);
 
-                    newViewInfo.type = ViewInfo.TYPE_EDITTEXT;
-                    String text = ((EditTextInfo) viewInfo).text;
-                    ((EditTextInfo) newViewInfo).text = text;
-                    EditText editText = new EditText(MainActivity.this);
-                    editText.setTag(newViewInfo);
-                    editText.setX(viewInfo.x);
-                    editText.setY(viewInfo.y);
-                    editText.setText(text);
-
-                    mViewList.add(editText);
-                    mContent.addView(editText, mDefaultEditTextParams);
-
-                } else {
-                    newViewInfo = new ViewInfo(viewInfo.id, viewInfo.degree);
-                    newViewInfo.color = viewInfo.color;
-
-                    mContentLayoutParams = new FrameLayout.LayoutParams(viewInfo.width, viewInfo.height);
-
-                    ImageView imageView = new ImageView(MainActivity.this);
-                    imageView.setScaleType(ImageView.ScaleType.FIT_XY);
-                    imageView.setOnTouchListener(new MyTouchListener(imageView));
-                    imageView.setTag(newViewInfo);
-                    imageView.setX(viewInfo.x);
-                    imageView.setY(viewInfo.y);
-                    setImageResource(imageView, false);
-                    if (newViewInfo.degree != 0) {
-                        imageView.setRotation(viewInfo.degree);
-                    }
-                    mViewList.add(imageView);
-                    mContent.addView(imageView, mContentLayoutParams);
-                }
-                newViewInfo.height = viewInfo.height;
-                newViewInfo.width = viewInfo.width;
-                newViewInfo.x = viewInfo.x;
-                newViewInfo.y = viewInfo.y;
-                newViewInfo.realId = viewInfo.realId;
             }
         }
+
     }
 
 
@@ -371,11 +378,42 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     removeViews(view);
                     createMemento(view, true, false);
                 }
-                for (View view : new ArrayList<View>(mAdjustViewList)){
+                for (View view : new ArrayList<View>(mAdjustViewList)) {
                     removeViews(view);
                     createMemento(view, true, false);
                 }
                 mContent.requestLayout();
+                break;
+            case R.id.send_request:
+
+                //transform all the labeled data
+                for (View squareView: mViewList){
+                    Square square = (Square) squareView.getTag();
+
+                    float realWidth=squareView.getWidth();
+                    float realHeight=squareView.getHeight();
+                    float width=realWidth/imageW*realImageWidth;
+                    float height=realHeight/imageH*realImageHeight;
+                    int xmin= (int) (squareView.getX()*realImageWidth/imageW);
+                    int ymin= (int) (squareView.getY()*realImageHeight/imageH);
+                    square.setXmax(xmin+(int)width);
+                    square.setXmin(xmin);
+                    square.setYmin(ymin);
+                    square.setYmax(ymin+(int)height);
+                    mContent.removeView(squareView);
+                }
+
+                mViewList.clear();
+                mAdjustViewList.clear();
+                mFocusViewList.clear();
+
+                parseType=PARSE_URLINFO;
+                try {
+                    url = new URL("http://67.216.209.114/ask.php");
+                }
+                catch(Exception e) {
+                }
+                sendRequestWithHttpURLConnection();
                 break;
             case R.id.copy:
                 LogUtils.i("mFocusViewList size: " + mFocusViewList.size());
@@ -483,31 +521,31 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     }
                 }
                 break;
-            case R.id.back:
-                --mCurrentIndex;
-                ElementMemento memento = mCreataker.restoreMemento(mCurrentIndex);
-                if (memento == null) {
-                    ++mCurrentIndex;
-                } else {
-                    mInfoList.clear();
-                    mInfoList.addAll(mOriginator.restoreMemento(memento));
-                    mOriginator.printMementos();
-                    layoutViews();
-                }
-                LogUtils.d("back mCurrentIndex: " + mCurrentIndex);
-                break;
-            case R.id.forward:
-                ++mCurrentIndex;
-                memento = mCreataker.restoreMemento(mCurrentIndex);
-                if (memento == null) {
-                    --mCurrentIndex;
-                } else {
-                    mInfoList.clear();
-                    mInfoList.addAll(mOriginator.restoreMemento(memento));
-                    layoutViews();
-                }
-                LogUtils.d("forward mCurrentIndex: " + mCurrentIndex);
-                break;
+//            case R.id.back:
+//                --mCurrentIndex;
+//                ElementMemento memento = mCreataker.restoreMemento(mCurrentIndex);
+//                if (memento == null) {
+//                    ++mCurrentIndex;
+//                } else {
+//                    mInfoList.clear();
+//                    mInfoList.addAll(mOriginator.restoreMemento(memento));
+//                    mOriginator.printMementos();
+//                    layoutViews();
+//                }
+//                LogUtils.d("back mCurrentIndex: " + mCurrentIndex);
+//                break;
+//            case R.id.forward:
+//                ++mCurrentIndex;
+//                memento = mCreataker.restoreMemento(mCurrentIndex);
+//                if (memento == null) {
+//                    --mCurrentIndex;
+//                } else {
+//                    mInfoList.clear();
+//                    mInfoList.addAll(mOriginator.restoreMemento(memento));
+//                    layoutViews();
+//                }
+//                LogUtils.d("forward mCurrentIndex: " + mCurrentIndex);
+//                break;
 
             default:
                 break;
@@ -550,8 +588,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             int action = event.getAction();
             if (mCurrentImageView == null && MotionEvent.ACTION_DOWN != action) {
                 return false;
-            }
 
+            }
             switch (action) {
                 case MotionEvent.ACTION_DOWN:
                     fdownX = event.getX();
@@ -624,60 +662,60 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
     private void createMemento(View view, boolean isDelete, boolean isNewElement) {
 
-        if (mInfoList == null) {
-            mInfoList = new ArrayList<>();
-        }
-        mCurrentIndex++;
-
-//        LogUtils.d("add mCurrentIndex: " + mCurrentIndex);
-
-        ViewInfo viewInfo = (ViewInfo) view.getTag();
-//        LogUtils.d("viewInfo: " + viewInfo);
-        if (isNewElement) { //刚刚从侧边栏拖拽出来的元素
-//            LogUtils.d("新增元素");
-            viewInfo.width = viewInfo.width == 0 ? view.getWidth() : viewInfo.width;
-            viewInfo.height = viewInfo.height == 0 ? view.getHeight() : viewInfo.height;
-            viewInfo.x = viewInfo.x == 0 ? (int) view.getX() : viewInfo.x;
-            viewInfo.y = viewInfo.y == 0 ? (int) view.getY() : viewInfo.y;
-            mInfoList.add(viewInfo);
-        } else { //改变现有元素
-//            LogUtils.d("改变现有元素");
-            if (isDelete) {
-//                LogUtils.i("删除元素");
-                for (int i = mInfoList.size() - 1; i >= 0; i--) {
-                    ViewInfo info = mInfoList.get(i);
-                    if (info.id == viewInfo.id && info.realId == viewInfo.realId) {
-//                        LogUtils.i("删除重复元素: " + info);
-                        mInfoList.remove(info);
-                    }
-                }
-            } else {
-                ViewInfo newViewInfo = new ViewInfo(viewInfo.id, view.getRotation());
-                newViewInfo.realId = ++mRealInfoId;
-                newViewInfo.width = view.getWidth();
-                newViewInfo.height = view.getHeight();
-                newViewInfo.x = view.getX();
-                newViewInfo.y = view.getY();
-                newViewInfo.type = viewInfo.type;
-                newViewInfo.color = mCurrentColor;
-
-                for (int i = mInfoList.size() - 1; i >= 0; i--) {
-                    ViewInfo info = mInfoList.get(i);
-                    if (info.id == viewInfo.id && info.realId == viewInfo.realId) {
-//                        LogUtils.i("删除重复元素: " + info);
-                        mInfoList.remove(info);
-                        view.setTag(newViewInfo);
-                    }
-                }
-                mInfoList.add(newViewInfo);
-            }
-        }
-
-        List<ViewInfo> infos = new ArrayList<>();
-
-        infos.addAll(mInfoList);
-        mOriginator.setInfos(infos);
-        mCreataker.createMemento(mOriginator.createMemento(), mCurrentIndex);
+//        if (mInfoList == null) {
+//            mInfoList = new ArrayList<>();
+//        }
+//        mCurrentIndex++;
+//
+////        LogUtils.d("add mCurrentIndex: " + mCurrentIndex);
+//
+//        ViewInfo viewInfo = (ViewInfo) view.getTag();
+////        LogUtils.d("viewInfo: " + viewInfo);
+//        if (isNewElement) { //刚刚从侧边栏拖拽出来的元素
+////            LogUtils.d("新增元素");
+//            viewInfo.width = viewInfo.width == 0 ? view.getWidth() : viewInfo.width;
+//            viewInfo.height = viewInfo.height == 0 ? view.getHeight() : viewInfo.height;
+//            viewInfo.x = viewInfo.x == 0 ? (int) view.getX() : viewInfo.x;
+//            viewInfo.y = viewInfo.y == 0 ? (int) view.getY() : viewInfo.y;
+//            mInfoList.add(viewInfo);
+//        } else { //改变现有元素
+////            LogUtils.d("改变现有元素");
+//            if (isDelete) {
+////                LogUtils.i("删除元素");
+//                for (int i = mInfoList.size() - 1; i >= 0; i--) {
+//                    ViewInfo info = mInfoList.get(i);
+//                    if (info.id == viewInfo.id && info.realId == viewInfo.realId) {
+////                        LogUtils.i("删除重复元素: " + info);
+//                        mInfoList.remove(info);
+//                    }
+//                }
+//            } else {
+//                ViewInfo newViewInfo = new ViewInfo(viewInfo.id, view.getRotation());
+//                newViewInfo.realId = ++mRealInfoId;
+//                newViewInfo.width = view.getWidth();
+//                newViewInfo.height = view.getHeight();
+//                newViewInfo.x = view.getX();
+//                newViewInfo.y = view.getY();
+//                newViewInfo.type = viewInfo.type;
+//                newViewInfo.color = mCurrentColor;
+//
+//                for (int i = mInfoList.size() - 1; i >= 0; i--) {
+//                    ViewInfo info = mInfoList.get(i);
+//                    if (info.id == viewInfo.id && info.realId == viewInfo.realId) {
+////                        LogUtils.i("删除重复元素: " + info);
+//                        mInfoList.remove(info);
+//                        view.setTag(newViewInfo);
+//                    }
+//                }
+//                mInfoList.add(newViewInfo);
+//            }
+//        }
+//
+//        List<ViewInfo> infos = new ArrayList<>();
+//
+//        infos.addAll(mInfoList);
+//        mOriginator.setInfos(infos);
+//        mCreataker.createMemento(mOriginator.createMemento(), mCurrentIndex);
 
     }
 
@@ -704,23 +742,21 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
     private View.OnClickListener mSquareBarClickListener = new View.OnClickListener() {
         @Override
-        public void onClick(View v){
+        public void onClick(View v) {
             final ImageView imageView = new ImageView(MainActivity.this);
             mCurrentImageView = imageView;
-            ViewInfo viewInfo = new ViewInfo(v.getId(), 0);
-            viewInfo.type = ViewInfo.TYPE_IMAGEVIEW;
-            viewInfo.color = mCurrentColor;
-            viewInfo.realId = ++mRealInfoId;
-            imageView.setTag(viewInfo);
+            Square square = new Square();
+            labelInfo.getSquare().add(square);
+            imageView.setTag(square);
             imageView.setScaleType(ImageView.ScaleType.FIT_XY);
-            setImageResource(imageView, true);
+            imageView.setBackgroundResource(R.drawable.border_shape_blue);
             int[] location = new int[2];
             v.getLocationOnScreen(location);
             locationX = location[0];
             locationY = location[1];
             imageView.setX(locationX + 300);
             imageView.setY(locationY + 300);
-            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(v.getWidth()*4, v.getHeight()*4);
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(v.getWidth() * 4, v.getHeight() * 4);
             mContent.addView(imageView, params);
             mViewList.add(imageView);
             mAdjustViewList.clear();
@@ -773,12 +809,13 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         @Override
         public boolean onTouch(View v, MotionEvent event) {
             int action = event.getAction();
-            ViewInfo viewInfo = (ViewInfo) v.getTag();
 
             float targetX = 0;
             float targetY = 0;
             float targetRight = 0;
             float targetBottom = 0;
+            imageW=v.getWidth();
+            imageH=v.getHeight();
 
             switch (action) {
                 case MotionEvent.ACTION_DOWN:
@@ -786,25 +823,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     mStartY = imageView.getY();
                     downX = event.getX();
                     downY = event.getY();
-                    if (v.getRotation() == DEGREE_90) {
-                        LogUtils.d("90 ");
-                        downX = v.getHeight() - event.getY();
-                        downY = v.getWidth() - (v.getWidth() - event.getX());
-                    } else if (v.getRotation() == DEGREE_180) {
-                        LogUtils.d("180 ");
-                        downX = v.getWidth() - event.getX();
-                        downY = v.getHeight() - event.getY();
-                    } else if (v.getRotation() == DEGREE_270) {
-                        LogUtils.d("270 ");
-                        downX = event.getY();
-                        downY = v.getWidth() - event.getX();
-                    }
-                    LogUtils.d("downX: " + downX + " , downY: " + downY);
+
                     downTime = System.currentTimeMillis();
-
-                    imageW = imageView.getWidth();
-                    imageH = imageView.getHeight();
-
                     int[] location0 = new int[2];
                     imageView.getLocationOnScreen(location0);
                     int x0 = location0[0];
@@ -814,39 +834,16 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     srcRect.right = x0 + imageView.getWidth();
                     srcRect.top = y0;
                     srcRect.bottom = y0 + imageView.getHeight();
-
                     getLineCoordinate();
-
-                    if (viewInfo.id == R.id.rectIcon) {
-                        //mRectList = getNeedMoveView(srcRect, imageView);
-                    }
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     float x1 = event.getX();
                     float y1 = event.getY();
-
-                    if (v.getRotation() == DEGREE_90) {
-                        x1 = v.getHeight() - event.getY();
-                        y1 = v.getWidth() - (v.getWidth() - event.getX());
-                    } else if (v.getRotation() == DEGREE_180) {
-                        x1 = v.getWidth() - event.getX();
-                        y1 = v.getHeight() - event.getY();
-                    } else if (v.getRotation() == DEGREE_270) {
-                        x1 = event.getY();
-                        y1 = v.getWidth() - event.getX();
-                    }
-
                     float disX = x1 - downX;
                     float disY = y1 - downY;
-
                     LogUtils.i("disX : " + (int) disX + ", disY : " + (int) disY);
 
-                    if ((viewInfo.id == R.id.lineIcon || viewInfo.id == R.id.xuxianIcon) && mFocusViewList.contains(imageView)) {
-                        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) imageView.getLayoutParams();
-                        params.width = imageW + (int) disX;
-                        params.height = imageH + (int) disY;
-                        imageView.requestLayout();
-                    } else if (viewInfo.id == R.id.rectIcon && mFocusViewList.contains(imageView)) {
+                    if ( mFocusViewList.contains(imageView)) {
                         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) imageView.getLayoutParams();
                         params.width = imageW + (int) disX;
                         if (params.width < 50) {
@@ -857,15 +854,12 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                             params.height = 50;
                         }
                         imageView.requestLayout();
-                    } else if(viewInfo.id == R.id.rectIcon && mAdjustViewList.contains(imageView)) {
+                        downX=x1;
+                        downY=y1;
+                    } else if (mAdjustViewList.contains(imageView)) {
                         imageView.setX(imageView.getX() + disX);
                         imageView.setY(imageView.getY() + disY);
-                        if (mRectList != null) {
-                            for (View view : mRectList) {
-                                view.setX(view.getX() + disX);
-                                view.setY(view.getY() + disY);
-                            }
-                        }
+                        imageView.requestLayout();
                     }
 //                    else {
 //                        if (mFocusViewList.contains(imageView)) {
@@ -995,7 +989,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     if (time > 200) {
                         //it's long click
                     } else {
-                        if (viewInfo.id == R.id.rectIcon && mRectList != null && !mRectList.isEmpty()) {
+                        if ( mRectList != null && !mRectList.isEmpty()) {
                             boolean hasFocusOtherView = false;
                             for (View view : mRectList) {
                                 int[] location = new int[2];
@@ -1033,21 +1027,19 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                                 imageView.requestLayout();
                             }
 //                            removeViews(v);
-                        }
-                        else {
+                        } else {
                             if (mAdjustViewList.contains(imageView)) {
                                 mFocusViewList.clear();
                                 mFocusViewList.add(imageView);
                                 mAdjustViewList.clear();
                                 imageView.setBackgroundResource(R.drawable.border_shape_green);
-                                Toast.makeText(MainActivity.this,"resize mode",Toast.LENGTH_SHORT).show();
-                            }
-                            else{
+                                Toast.makeText(MainActivity.this, "resize mode", Toast.LENGTH_SHORT).show();
+                            } else {
                                 mAdjustViewList.clear();
                                 mAdjustViewList.add(imageView);
                                 mFocusViewList.clear();
                                 imageView.setBackgroundResource(R.drawable.border_shape_blue);
-                                Toast.makeText(MainActivity.this,"replace mode",Toast.LENGTH_SHORT).show();
+                                Toast.makeText(MainActivity.this, "replace mode", Toast.LENGTH_SHORT).show();
                             }
 
                             if (Math.abs(x - downImageX) <= 5 && Math.abs(y - downImageY) <= 5) {
@@ -1091,22 +1083,22 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         mRights.clear();
         mBottoms.clear();
         mLines.clear();
-        for (View view : mViewList) {
-            ViewInfo viewInfo = (ViewInfo) view.getTag();
-            if (R.id.lineIcon == viewInfo.id || R.id.xuxianIcon == viewInfo.id) {
-                mLines.add(view);
-
-                int x = (int) view.getX();
-                int y = (int) view.getY();
-                int bottom = y + view.getHeight();
-                int right = x + view.getWidth();
-
-                mLefts.add(x);
-                mTops.add(y);
-                mRights.add(right);
-                mBottoms.add(bottom);
-            }
-        }
+//        for (View view : mViewList) {
+//            ViewInfo viewInfo = (ViewInfo) view.getTag();
+//            if (R.id.lineIcon == viewInfo.id || R.id.xuxianIcon == viewInfo.id) {
+//                mLines.add(view);
+//
+//                int x = (int) view.getX();
+//                int y = (int) view.getY();
+//                int bottom = y + view.getHeight();
+//                int right = x + view.getWidth();
+//
+//                mLefts.add(x);
+//                mTops.add(y);
+//                mRights.add(right);
+//                mBottoms.add(bottom);
+//            }
+//        }
 
         Log.d(TAG, "mLefts : " + mLefts.toString());
         Log.i(TAG, "mTops : " + mTops.toString());
@@ -1251,9 +1243,9 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         }
     }
 
-    private View.OnClickListener medOnClickListener = new View.OnClickListener(){
+    private View.OnClickListener medOnClickListener = new View.OnClickListener() {
         @Override
-        public void onClick(View v){
+        public void onClick(View v) {
             if (!canvasZoomEnabled) {
                 mContent.setOnTouchListener(new View.OnTouchListener() {
                     @Override
@@ -1359,15 +1351,14 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     }
                 });
 
-                for (View view: mViewList){
+                for (View view : mViewList) {
                     view.setOnTouchListener(null);
                 }
 
                 Toast.makeText(MainActivity.this, "listener enabled!", Toast.LENGTH_SHORT).show();
-            }
-            else {
+            } else {
                 mContent.setOnTouchListener(null);
-                for (View view: mViewList){
+                for (View view : mViewList) {
                     view.setOnTouchListener(new MyTouchListener((ImageView) view));
                 }
                 Toast.makeText(MainActivity.this, "listener disabled!", Toast.LENGTH_SHORT).show();
@@ -1376,15 +1367,107 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         }
     };
 
-    private View.OnClickListener mResetListener = new View.OnClickListener(){
+    private View.OnClickListener mResetListener = new View.OnClickListener() {
         @Override
-        public void onClick(View v){
-            mContent.scrollTo(0,0);
+        public void onClick(View v) {
+            mContent.scrollTo(0, 0);
             mContent.setScaleX(1f);
             mContent.setScaleY(1f);
-            mCurrentScale=1f;
+            mCurrentScale = 1f;
         }
     };
 
+    private void loadImageFromNetwork() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection con=null;
+
+                try {
+                    URL m_url = new URL(urlInfo.getBackgroundURL());
+                    con = (HttpURLConnection) m_url.openConnection();
+                    InputStream in = con.getInputStream();
+                    BitmapFactory.Options options = new BitmapFactory.Options();
+                    options.inJustDecodeBounds = true;
+                    BitmapFactory.decodeStream(in, null, options);
+                    realImageHeight = options.outHeight;
+                    realImageWidth = options.outWidth;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }finally {
+                    if(con!=null){
+                        con.disconnect();
+                    }
+                }
+            }
+        }).start();
+
+    }
+
+    private Handler handler=new Handler(){
+        public void handleMessage(Message msg){
+            String response;
+            Gson gson=new Gson();
+            //如果返现msg.what=SHOW_RESPONSE，则进行制定操作，如想进行其他操作，则在子线程里将SHOW_RESPONSE改变
+            switch (msg.what){
+                case PARSE_URLINFO:
+                    response=(String)msg.obj;
+                    urlInfo= gson.fromJson(response, URLInfo.class);
+                    loadImageFromNetwork();
+                    Picasso.with(backgroundView.getContext())
+                            .load(urlInfo.getBackgroundURL())
+                            .error(R.drawable.example)
+                            .into(backgroundView);
+                    parseType = PARSE_SQUARE;
+                    try {
+                        url = new URL(urlInfo.getSquareURL());
+                    }catch(Exception e){
+                    }
+                    sendRequestWithHttpURLConnection();
+                    Toast.makeText(MainActivity.this,"Parse Success!"+urlInfo.getBackgroundURL(),Toast.LENGTH_SHORT).show();
+                    break;
+                case PARSE_SQUARE:
+                    response=(String)msg.obj;
+                    labelInfo= gson.fromJson(response, LabelInfo.class);
+                    layoutViews();
+                    break;
+            }
+
+        }
+    };
+    private void sendRequestWithHttpURLConnection(){
+        //开启线程来发起网络请求
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection connection=null;
+                try{
+                    connection=(HttpURLConnection)url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout(8000);
+                    connection.setReadTimeout(8000);
+
+                    InputStream in=connection.getInputStream();
+                    //下面对获取到的输入流进行读取
+                    BufferedReader buff=new BufferedReader(new InputStreamReader(in));
+                    StringBuilder response=new StringBuilder();
+                    String line=null;
+                    while((line=buff.readLine())!=null){
+                        response.append(line);
+                    }
+                    Message message=new Message();
+                    message.what=parseType;
+                    message.obj=response.toString();
+                    handler.sendMessage(message);
+                }catch(Exception e){
+                    e.printStackTrace();
+                }finally {
+                    if(connection!=null){
+                        connection.disconnect();
+                    }
+                }
+            }
+        }).start();
+    }
 
 }
