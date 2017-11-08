@@ -15,6 +15,7 @@ public class URLInfo {
 
     private String backgroundURL;
     private String squareURL;
+    private String layerURL;
     public void setBackgroundURL(String backgroundURL) {
         this.backgroundURL = backgroundURL;
     }
@@ -28,5 +29,16 @@ public class URLInfo {
     public String getSquareURL() {
         return squareURL;
     }
+
+    public void setLayerURL(String layerURL) {
+        this.layerURL = layerURL;
+    }
+    public String getLayerURL() {
+        return layerURL;
+    }
+
+
+
+
 
 }

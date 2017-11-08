@@ -132,7 +132,41 @@
                       android:layout_weight="1"
                       android:orientation="horizontal">
 
+            <RelativeLayout
 
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1">
+
+                <ImageView android:id="@+id/paint"
+                    android:layout_width="100px"
+                    android:layout_height="100px"
+                    android:layout_centerInParent="true"
+                    android:background="#ffffff"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/brush"/>
+
+
+            </RelativeLayout>
+
+            <RelativeLayout
+
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1">
+                <ImageView android:id="@+id/erase"
+                    android:layout_width="100px"
+                    android:layout_height="100px"
+                    android:layout_centerInParent="true"
+                    android:layout_centerVertical="true"
+                    android:background="#ffffff"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/erasor"/>
+            </RelativeLayout>
 
         </LinearLayout>
 

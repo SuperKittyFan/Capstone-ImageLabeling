@@ -8,7 +8,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -94,6 +98,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private Bitmap mLineBitmapBlack;
     private Bitmap mLineBitmapGreen;
     private Bitmap mLineBitmapRed;
+    private Bitmap mTempBitmap;
+    private Bitmap mFreespace;
 
 
     private List<ViewInfo> mInfoList = new ArrayList<ViewInfo>();
@@ -106,6 +112,9 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private boolean mSelectTextTools;
     private ImageView mTextTools;
     private ImageView backgroundView;
+    private ImageView foregroundView;
+    private ImageView paintView;
+    private ImageView erasorView;
     private List<Integer> mLefts = new ArrayList<Integer>();
     private List<Integer> mTops = new ArrayList<Integer>();
     private List<Integer> mRights = new ArrayList<Integer>();
@@ -128,10 +137,15 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private URLInfo urlInfo=new URLInfo();
     private LabelInfo labelInfo = new LabelInfo();
     private URL url;
+    private Canvas canvas;
+    private Paint paint;
+    private Path path;
 
     private int parseType;
     public static final int PARSE_URLINFO=0;
     public static final int PARSE_SQUARE=1;
+    public static final int LOAD_IMAGE=2;
+
 
 
     @Override
@@ -152,12 +166,15 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         mRootView = (FrameLayout) findViewById(R.id.root);
         mContent = (FrameLayout) findViewById(R.id.content);
         backgroundView = (ImageView) findViewById(R.id.imageView);
+        foregroundView = (ImageView) findViewById(R.id.foregroundView);
+
 
         RadioGroup radioGroup = (RadioGroup) findViewById(R.id.radiogroup);
         radioGroup.setOnCheckedChangeListener(this);
         mContentLayoutParams = (FrameLayout.LayoutParams) mContent.getLayoutParams();
         mContentLayoutParams.width = mDisplayMetrics.widthPixels - 312;
         mContentLayoutParams.height = mDisplayMetrics.heightPixels - mStatusBarHeight - 107;
+
 
 
         mContent.setOnTouchListener(null);
@@ -189,13 +206,13 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         findViewById(R.id.back).setOnClickListener(this);
         findViewById(R.id.forward).setOnClickListener(this);
         findViewById(R.id.send_request).setOnClickListener(this);
+        findViewById(R.id.paint).setOnClickListener(this);
+        findViewById(R.id.erase).setOnClickListener(this);
         mTextTools = (ImageView) findViewById(R.id.text);
         mTextTools.setOnClickListener(this);
         mViewList.clear();
-
-
-//start getting image and label data
         parseType=PARSE_URLINFO;
+//start getting image and label data
 //        Drawable bitmap = ContextCompat.getDrawable(this, R.drawable.example);
 //        backgroundView.setImageDrawable(bitmap);
         sendRequestWithHttpURLConnection();
@@ -212,8 +229,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
         if (labelInfo.getSquare()!=null){
             for (Square square: labelInfo.getSquare()){
-                imageH=backgroundView.getHeight();
-                imageW=backgroundView.getWidth();
                 float xmax=square.getXmax();
                 float xmin=square.getXmin();
                 float ymax=square.getYmax();
@@ -229,7 +244,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
                 ImageView imageView = new ImageView(MainActivity.this);
                 imageView.setScaleType(ImageView.ScaleType.FIT_XY);
-                imageView.setOnTouchListener(new MyTouchListener(imageView));
+                imageView.setOnTouchListener(new SquareTouchListener(imageView));
                 imageView.setTag(square);
                 imageView.setX(realXmin);
                 imageView.setY(realYmin);
@@ -345,6 +360,23 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
+            case R.id.paint:
+                foregroundView.setOnTouchListener(new FreespaceTouchListener(foregroundView));
+                paint.setColor(Color.rgb(2,192,1));
+                for (View view:mViewList){
+                    view.setVisibility(View.GONE);
+                }
+                Toast.makeText(v.getContext(),"Paint enabled",Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.erase:
+                foregroundView.setOnTouchListener(new FreespaceTouchListener(foregroundView));
+                paint.setColor(Color.BLACK);
+
+                for (View view:mViewList){
+                    view.setVisibility(View.GONE);
+                }
+                Toast.makeText(v.getContext(),"Erasor enabled",Toast.LENGTH_SHORT).show();
+                break;
             case R.id.rotate:
                 for (View view : mFocusViewList) {
                     LogUtils.d("start x: " + view.getX() + ", y :" + view.getY());
@@ -762,7 +794,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             mAdjustViewList.clear();
             mFocusViewList.clear();
             mAdjustViewList.add(imageView);
-            imageView.setOnTouchListener(new MyTouchListener(imageView));
+            imageView.setOnTouchListener(new SquareTouchListener(imageView));
         }
     };
 
@@ -799,10 +831,10 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     }
 
 
-    private class MyTouchListener implements View.OnTouchListener {
+    private class SquareTouchListener implements View.OnTouchListener {
         private ImageView imageView;
 
-        MyTouchListener(ImageView imageView) {
+        SquareTouchListener(ImageView imageView) {
             this.imageView = imageView;
         }
 
@@ -1015,7 +1047,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                             }
 
                             if (!hasFocusOtherView) {
-                                imageView.setOnTouchListener(new MyTouchListener(imageView));
+                                imageView.setOnTouchListener(new SquareTouchListener(imageView));
                                 mFocusViewList.add(imageView);
                                 imageView.setBackgroundResource(R.drawable.border_shape_blue);
                                 if (mRectList != null) {
@@ -1074,6 +1106,31 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             }
             return false;
         }
+    }
+
+    private class FreespaceTouchListener implements View.OnTouchListener{
+        private ImageView imageView;
+
+        FreespaceTouchListener(ImageView imageView) {
+            this.imageView = imageView;
+        }
+
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    path.reset();
+                    path.moveTo(event.getX(), event.getY());
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    path.lineTo(event.getX(), event.getY());
+                    break;
+            }
+            canvas.drawPath(path, paint);
+            foregroundView.setImageBitmap(mFreespace);
+            return true;
+        }
+
     }
 
 
@@ -1203,7 +1260,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         locationY = location[1];
         imageView.setX(locationX + 5);
         imageView.setY(locationY + 5);
-        imageView.setOnTouchListener(new MyTouchListener(imageView));
+        imageView.setOnTouchListener(new SquareTouchListener(imageView));
         if (viewInfo.degree != 0) {
             imageView.setRotation(viewInfo.degree);
         }
@@ -1359,7 +1416,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             } else {
                 mContent.setOnTouchListener(null);
                 for (View view : mViewList) {
-                    view.setOnTouchListener(new MyTouchListener((ImageView) view));
+                    view.setOnTouchListener(new SquareTouchListener((ImageView) view));
                 }
                 Toast.makeText(MainActivity.this, "listener disabled!", Toast.LENGTH_SHORT).show();
             }
@@ -1374,6 +1431,10 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             mContent.setScaleX(1f);
             mContent.setScaleY(1f);
             mCurrentScale = 1f;
+            foregroundView.setOnTouchListener(null);
+            for (View view:mViewList){
+                view.setVisibility(View.VISIBLE);
+            }
         }
     };
 
@@ -1384,14 +1445,17 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 HttpURLConnection con=null;
 
                 try {
-                    URL m_url = new URL(urlInfo.getBackgroundURL());
+                    URL m_url = new URL(urlInfo.getLayerURL());
                     con = (HttpURLConnection) m_url.openConnection();
                     InputStream in = con.getInputStream();
                     BitmapFactory.Options options = new BitmapFactory.Options();
-                    options.inJustDecodeBounds = true;
-                    BitmapFactory.decodeStream(in, null, options);
+                    options.inJustDecodeBounds = false;
+                    mTempBitmap = BitmapFactory.decodeStream(in, null, options);
                     realImageHeight = options.outHeight;
                     realImageWidth = options.outWidth;
+                    Message message=new Message();
+                    message.what=parseType;
+                    handler.sendMessage(message);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }finally {
@@ -1408,16 +1472,23 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         public void handleMessage(Message msg){
             String response;
             Gson gson=new Gson();
-            //如果返现msg.what=SHOW_RESPONSE，则进行制定操作，如想进行其他操作，则在子线程里将SHOW_RESPONSE改变
             switch (msg.what){
                 case PARSE_URLINFO:
                     response=(String)msg.obj;
                     urlInfo= gson.fromJson(response, URLInfo.class);
-                    loadImageFromNetwork();
                     Picasso.with(backgroundView.getContext())
                             .load(urlInfo.getBackgroundURL())
                             .error(R.drawable.example)
                             .into(backgroundView);
+//                    mFreespace =Bitmap.createBitmap(backgroundView.getWidth(), backgroundView.getHeight(), Bitmap.Config.ARGB_4444);
+//                    canvas = new Canvas(mFreespace);
+//                    paint = new Paint();
+//                    paint.setStrokeCap(Paint.Cap.ROUND);
+//                    paint.setStrokeJoin(Paint.Join.ROUND);
+//                    paint.setStrokeWidth(5);
+//                    paint.setColor(Color.BLACK);
+//                    paint.setAntiAlias(true);
+                    //canvas.drawBitmap(mTempBitmap, new Matrix(), paint);
                     parseType = PARSE_SQUARE;
                     try {
                         url = new URL(urlInfo.getSquareURL());
@@ -1427,10 +1498,30 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     Toast.makeText(MainActivity.this,"Parse Success!"+urlInfo.getBackgroundURL(),Toast.LENGTH_SHORT).show();
                     break;
                 case PARSE_SQUARE:
+                    parseType=LOAD_IMAGE;
+                    loadImageFromNetwork();
                     response=(String)msg.obj;
                     labelInfo= gson.fromJson(response, LabelInfo.class);
+                    break;
+                case LOAD_IMAGE:
+                    imageH=foregroundView.getHeight();
+                    imageW=foregroundView.getWidth();
+                    mFreespace = Bitmap.createScaledBitmap(mTempBitmap, imageW, imageH, true);
+                    mTempBitmap.recycle();
+                    canvas=new Canvas(mFreespace);
+                    path = new Path();
+                    paint = new Paint();
+                    paint.setColor(Color.rgb(2,192,1));
+                    //paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setStrokeWidth(50);
+                    paint.setStrokeJoin(Paint.Join.ROUND);
+                    paint.setStrokeCap(Paint.Cap.ROUND);
+                    foregroundView.setImageBitmap(mFreespace);
+                    foregroundView.setAlpha(40);
                     layoutViews();
                     break;
+
             }
 
         }
