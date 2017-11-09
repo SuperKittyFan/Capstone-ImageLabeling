@@ -46,12 +46,17 @@ import com.lee.drawlayoutsample.utils.LogUtils;
 import com.squareup.picasso.Picasso;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -140,6 +145,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private Canvas canvas;
     private Paint paint;
     private Path path;
+    private String jsonString;
 
     private int parseType;
     public static final int PARSE_URLINFO=0;
@@ -414,6 +420,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     removeViews(view);
                     createMemento(view, true, false);
                 }
+
                 mContent.requestLayout();
                 break;
             case R.id.send_request:
@@ -438,6 +445,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 mViewList.clear();
                 mAdjustViewList.clear();
                 mFocusViewList.clear();
+                uploadJson(urlInfo.getSquareURL());
+                uploadImage(urlInfo.getLayerURL());
 
                 parseType=PARSE_URLINFO;
                 try {
@@ -587,6 +596,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private void removeViews(View view) {
         mContent.removeView(view);
         mViewList.remove(view);
+        labelInfo.getSquare().remove(view.getTag());
         mFocusViewList.remove(view);
         mAdjustViewList.remove(view);
     }
@@ -846,8 +856,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             float targetY = 0;
             float targetRight = 0;
             float targetBottom = 0;
-            imageW=v.getWidth();
-            imageH=v.getHeight();
+            int imageWidth=v.getWidth();
+            int imageHeight=v.getHeight();
 
             switch (action) {
                 case MotionEvent.ACTION_DOWN:
@@ -877,11 +887,11 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
                     if ( mFocusViewList.contains(imageView)) {
                         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) imageView.getLayoutParams();
-                        params.width = imageW + (int) disX;
+                        params.width = imageWidth + (int) disX;
                         if (params.width < 50) {
                             params.width = 50;
                         }
-                        params.height = imageH + (int) disY;
+                        params.height = imageHeight + (int) disY;
                         if (params.height < 50) {
                             params.height = 50;
                         }
@@ -1242,16 +1252,13 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
         final ImageView imageView = new ImageView(MainActivity.this);
         ViewInfo tag = (ViewInfo) view.getTag();
-
         ViewInfo viewInfo = new ViewInfo(tag.id, tag.degree);
         viewInfo.type = tag.type;
         viewInfo.color = tag.color;
         viewInfo.realId = ++mRealInfoId;
         viewInfo.width = tag.width;
         viewInfo.height = tag.height;
-
         imageView.setTag(viewInfo);
-
         imageView.setScaleType(ImageView.ScaleType.FIT_XY);
         setImageResource(imageView, false);
         int[] location = new int[2];
@@ -1559,6 +1566,186 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 }
             }
         }).start();
+    }
+
+    private int uploadJson(final String selectedFilePath){
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                int serverResponseCode = 0;
+                HttpURLConnection connection;
+                DataOutputStream dataOutputStream;
+                Gson gson=new Gson();
+                jsonString=gson.toJson(labelInfo);
+                String lineEnd = "\r\n";
+                String twoHyphens = "--";
+                String boundary = "*****";
+                int bytesRead, bytesAvailable, bufferSize;
+                byte[] buffer;
+                int maxBufferSize = 1 * 1024 * 1024;
+                String[] parts = selectedFilePath.split("/");
+                final String fileName = parts[parts.length - 1];
+                try {
+                    URL url = new URL("http://67.216.209.114/UploadToServer.php");
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setDoInput(true);//Allow Inputs
+                    connection.setDoOutput(true);//Allow Outputs
+                    connection.setUseCaches(false);//Don't use a cached Copy
+                    connection.setRequestMethod("POST");
+                    connection.setRequestProperty("Connection", "Keep-Alive");
+                    connection.setRequestProperty("ENCTYPE", "multipart/form-data");
+                    connection.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+                    connection.setRequestProperty("uploaded_file", selectedFilePath);
+                    //creating new dataoutputstream
+                    dataOutputStream = new DataOutputStream(connection.getOutputStream());
+                    //writing bytes to data outputstream
+                    dataOutputStream.writeBytes(twoHyphens + boundary + lineEnd);
+                    dataOutputStream.writeBytes("Content-Disposition: form-data; name=\"uploaded_file\";filename=\""
+                            + fileName+ "\"" + lineEnd);
+                    dataOutputStream.writeBytes(lineEnd);
+                    dataOutputStream.writeBytes(jsonString);
+                    bufferSize = maxBufferSize;
+                    //setting the buffer as byte array of size of bufferSize
+                    buffer = new byte[bufferSize];
+
+                    dataOutputStream.writeBytes(lineEnd);
+                    dataOutputStream.writeBytes(twoHyphens + boundary + twoHyphens + lineEnd);
+
+                    serverResponseCode = connection.getResponseCode();
+                    String serverResponseMessage = connection.getResponseMessage();
+
+                    Log.i(TAG, "Server Response is: " + serverResponseMessage + ": " + serverResponseCode);
+
+                    //response code of 200 indicates the server status OK
+                    if (serverResponseCode == 200) {
+                        BufferedReader in = new BufferedReader(
+                                new InputStreamReader(connection.getInputStream(),
+                                        "UTF-8"));
+
+                        String retData = null;
+
+                        String responseData = "";
+
+                        while ((retData = in.readLine()) != null)
+
+                        {
+
+                            responseData += retData;
+
+                        }
+
+                        in.close();
+                        System.out.println(responseData);
+                        Toast.makeText(MainActivity.this, responseData+jsonString, Toast.LENGTH_SHORT).show();
+
+                    }
+
+                    dataOutputStream.flush();
+                    dataOutputStream.close();
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                    Toast.makeText(MainActivity.this, "URL error!", Toast.LENGTH_SHORT).show();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Toast.makeText(MainActivity.this, "Cannot Read/Write File!", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }).start();
+
+
+        return 0;
+    }
+
+    private int uploadImage(final String selectedFilePath){
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                int serverResponseCode = 0;
+                HttpURLConnection connection;
+                DataOutputStream dataOutputStream;
+                mTempBitmap = Bitmap.createScaledBitmap(mFreespace, realImageWidth, realImageHeight, true);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                mTempBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+
+                String lineEnd = "\r\n";
+                String twoHyphens = "--";
+                String boundary = "*****";
+                int bytesRead, bytesAvailable, bufferSize;
+                byte[] buffer;
+                int maxBufferSize = 1 * 1024 * 1024;
+                String[] parts = selectedFilePath.split("/");
+                final String fileName = parts[parts.length - 1];
+                try {
+                    URL url = new URL("http://67.216.209.114/UploadToServer.php");
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setDoInput(true);//Allow Inputs
+                    connection.setDoOutput(true);//Allow Outputs
+                    connection.setUseCaches(false);//Don't use a cached Copy
+                    connection.setRequestMethod("POST");
+                    connection.setRequestProperty("Connection", "Keep-Alive");
+                    connection.setRequestProperty("ENCTYPE", "multipart/form-data");
+                    connection.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+                    connection.setRequestProperty("uploaded_file", selectedFilePath);
+                    //creating new dataoutputstream
+                    dataOutputStream = new DataOutputStream(connection.getOutputStream());
+                    //writing bytes to data outputstream
+                    dataOutputStream.writeBytes(twoHyphens + boundary + lineEnd);
+                    dataOutputStream.writeBytes("Content-Disposition: form-data; name=\"uploaded_file\";filename=\""
+                            + fileName+ "\"" + lineEnd);
+                    dataOutputStream.writeBytes(lineEnd);
+                    dataOutputStream.write(baos.toByteArray());
+                    bufferSize = maxBufferSize;
+                    //setting the buffer as byte array of size of bufferSize
+                    buffer = new byte[bufferSize];
+
+                    dataOutputStream.writeBytes(lineEnd);
+                    dataOutputStream.writeBytes(twoHyphens + boundary + twoHyphens + lineEnd);
+
+                    serverResponseCode = connection.getResponseCode();
+                    String serverResponseMessage = connection.getResponseMessage();
+
+                    Log.i(TAG, "Server Response is: " + serverResponseMessage + ": " + serverResponseCode);
+
+                    //response code of 200 indicates the server status OK
+                    if (serverResponseCode == 200) {
+                        BufferedReader in = new BufferedReader(
+                                new InputStreamReader(connection.getInputStream(),
+                                        "UTF-8"));
+
+                        String retData = null;
+
+                        String responseData = "";
+
+                        while ((retData = in.readLine()) != null)
+
+                        {
+
+                            responseData += retData;
+
+                        }
+
+                        in.close();
+                        System.out.println(responseData);
+                        Toast.makeText(MainActivity.this, responseData+jsonString, Toast.LENGTH_SHORT).show();
+
+                    }
+
+                    dataOutputStream.flush();
+                    dataOutputStream.close();
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                    Toast.makeText(MainActivity.this, "URL error!", Toast.LENGTH_SHORT).show();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Toast.makeText(MainActivity.this, "Cannot Read/Write File!", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }).start();
+
+
+        return 0;
     }
 
 }
