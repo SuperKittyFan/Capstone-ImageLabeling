@@ -66,16 +66,10 @@ import java.util.Set;
 
 public class MainActivity extends FragmentActivity implements View.OnClickListener, RadioGroup.OnCheckedChangeListener {
     private static final String TAG = "MainActivity";
-    private final int DEGREE_0 = 0;
-    private final int DEGREE_90 = 90;
-    private final int DEGREE_180 = 180;
-    private final int DEGREE_270 = 270;
     private int realImageWidth = 0;
     private int realImageHeight = 0;
     private ScaleGestureDetector mScaleGestureDetector;
     private ScaleGestureListener mScaleGestureListener = new ScaleGestureListener();
-    private final int ADJUST_ALL = 1;
-
     private Set<View> mViewList = new HashSet<View>();
     private Set<View> mFocusViewList = new HashSet<View>();
     private Set<View> mAdjustViewList = new HashSet<View>();
@@ -85,8 +79,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private float downImageX = 0f;
     private float downImageY = 0f;
 
-    private float fdownX = 0f;
-    private float fdownY = 0f;
 
     private int imageW = 0;
     private int imageH = 0;
@@ -99,43 +91,19 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private ImageView mCurrentImageView;
     private boolean canvasZoomEnabled = false;
 
-    private Bitmap mLineBitmap;
-    private Bitmap mLineBitmapBlack;
-    private Bitmap mLineBitmapGreen;
-    private Bitmap mLineBitmapRed;
     private Bitmap mTempBitmap;
     private Bitmap mFreespace;
 
 
-    private List<ViewInfo> mInfoList = new ArrayList<ViewInfo>();
     private FrameLayout mContent;
-    private List<View> mRectList;
     private float mCurrentScale = 1f;
     private float mContentDownX = 0f;
     private float mContentDownY = 0f;
     private boolean mMoved = false;
-    private boolean mSelectTextTools;
     private ImageView mTextTools;
     private ImageView backgroundView;
     private ImageView foregroundView;
-    private ImageView paintView;
-    private ImageView erasorView;
-    private List<Integer> mLefts = new ArrayList<Integer>();
-    private List<Integer> mTops = new ArrayList<Integer>();
-    private List<Integer> mRights = new ArrayList<Integer>();
-    private List<Integer> mBottoms = new ArrayList<Integer>();
-    private List<View> mLines = new ArrayList<View>();
-    private static final int LIMIT = 50;
-    private static final int OFFSET = 100;
-    private static final int PADDING = 20;
-
-    private int mCurrentColor; // 0--黑色，1--绿色，2--红色
-    private MementoCreataker mCreataker;
-    private MementoOriginator mOriginator;
-    private int mCurrentIndex = -1;
-    private FrameLayout.LayoutParams mDefaultEditTextParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
     private FrameLayout.LayoutParams mContentLayoutParams;
-    private int mRealInfoId = 5000;
     private float mStartX;
     private float mStartY;
     private static final int STROKE_WIDTH = 5;
@@ -159,8 +127,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
-        mOriginator = new MementoOriginator();
-        mCreataker = new MementoCreataker();
         try {
             url = new URL("http://67.216.209.114/ask.php");
         }
@@ -218,9 +184,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         mTextTools.setOnClickListener(this);
         mViewList.clear();
         parseType=PARSE_URLINFO;
-//start getting image and label data
-//        Drawable bitmap = ContextCompat.getDrawable(this, R.drawable.example);
-//        backgroundView.setImageDrawable(bitmap);
         sendRequestWithHttpURLConnection();
 
     }
@@ -228,11 +191,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private void layoutViews() {
 
         mViewList.clear();
-
-
-        //mContent.removeAllViews();
-
-
         if (labelInfo.getSquare()!=null){
             for (Square square: labelInfo.getSquare()){
                 float xmax=square.getXmax();
@@ -271,7 +229,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         super.onDestroy();
         mRootView.removeAllViews();
 
-        recycle(mLineBitmap, mLineBitmapBlack, mLineBitmapGreen, mLineBitmapRed);
+        recycle(mFreespace,mTempBitmap);
     }
 
     private void recycle(Bitmap... bitmaps) {
@@ -282,75 +240,9 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         }
     }
 
-    public void setImageResource(ImageView v, boolean focus) {
-        ViewInfo viewInfo = (ViewInfo) v.getTag();
-        switch (viewInfo.id) {
 
 
-            case R.id.lineIcon:
 
-                if (mLineBitmap == null) {
-
-                    mLineBitmapBlack = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
-                    mLineBitmapGreen = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
-                    mLineBitmapRed = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
-
-                    Paint paint = new Paint();
-                    paint.setColor(Color.BLACK);
-                    paint.setStrokeWidth(STROKE_WIDTH);
-
-                    Canvas canvas = new Canvas(mLineBitmapBlack);
-                    canvas.drawLine(0, 50, 100, 50, paint);
-
-                    paint.setColor(Color.RED);
-                    canvas = new Canvas(mLineBitmapRed);
-                    canvas.drawLine(0, 50, 100, 50, paint);
-
-                    paint.setColor(Color.GREEN);
-                    canvas = new Canvas(mLineBitmapGreen);
-                    canvas.drawLine(0, 50, 100, 50, paint);
-
-                    mLineBitmap = mLineBitmapBlack;
-
-                    if (viewInfo.color == 2) {
-                        mLineBitmap = mLineBitmapRed;
-                    } else if (mCurrentColor == 1) {
-                        mLineBitmap = mLineBitmapGreen;
-                    }
-                }
-                if (focus) {
-                    v.setImageResource(R.drawable.line_selected);
-                } else {
-                    v.setImageBitmap(mLineBitmap);
-                }
-                break;
-
-            case R.id.rectIcon:
-                if (focus) {
-                    v.setBackgroundResource(R.drawable.border_shape_focus);
-                } else {
-                    v.setBackgroundResource(R.drawable.border_shape);
-                }
-                break;
-            default:
-                break;
-        }
-    }
-
-
-    private void realSetImageResource(ImageView v, ViewInfo viewInfo, boolean focus, int focusId, int blackId, int greenId, int redId) {
-        if (focus) {
-            v.setImageResource(focusId);
-        } else {
-            if (viewInfo.color == 2) {
-                v.setImageResource(redId);
-            } else if (viewInfo.color == 1) {
-                v.setImageResource(greenId);
-            } else {
-                v.setImageResource(blackId);
-            }
-        }
-    }
 
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
@@ -383,48 +275,17 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 }
                 Toast.makeText(v.getContext(),"Erasor enabled",Toast.LENGTH_SHORT).show();
                 break;
-            case R.id.rotate:
-                for (View view : mFocusViewList) {
-                    LogUtils.d("start x: " + view.getX() + ", y :" + view.getY());
-                    ViewInfo viewInfo = (ViewInfo) view.getTag();
-                    if (viewInfo.id == R.id.lineIcon || viewInfo.id == R.id.xuxianIcon || viewInfo.id == R.id.rectIcon) {
-                        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) view.getLayoutParams();
-                        params.width = view.getHeight();
-                        params.height = view.getWidth();
-                        view.requestLayout();
-                    }
-                    float degree = view.getRotation() + 90f;
-                    LogUtils.d("degree: " + degree);
-                    if (degree >= 360) {
-                        degree = 0;
-                    }
-                    view.setRotation(degree);
-                    LogUtils.d("end x: " + view.getX() + ", y :" + view.getY());
-                    createMemento(view, false, false);
-
-                }
-                break;
-            case R.id.clear:
-                for (View view : mViewList) {
-                    mContent.removeView(view);
-                }
-                mViewList.clear();
-                mContent.requestLayout();
-                break;
             case R.id.delete:
                 for (View view : new ArrayList<View>(mFocusViewList)) {
                     removeViews(view);
-                    createMemento(view, true, false);
                 }
                 for (View view : new ArrayList<View>(mAdjustViewList)) {
                     removeViews(view);
-                    createMemento(view, true, false);
                 }
 
                 mContent.requestLayout();
                 break;
             case R.id.send_request:
-
                 //transform all the labeled data
                 for (View squareView: mViewList){
                     Square square = (Square) squareView.getTag();
@@ -441,13 +302,16 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     square.setYmax(ymin+(int)height);
                     mContent.removeView(squareView);
                 }
-
+                //clear the current view list
                 mViewList.clear();
                 mAdjustViewList.clear();
                 mFocusViewList.clear();
+
+                //upload labeldata and freespace
                 uploadJson(urlInfo.getSquareURL());
                 uploadImage(urlInfo.getLayerURL());
 
+                //fetch new url info
                 parseType=PARSE_URLINFO;
                 try {
                     url = new URL("http://67.216.209.114/ask.php");
@@ -456,138 +320,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 }
                 sendRequestWithHttpURLConnection();
                 break;
-            case R.id.copy:
-                LogUtils.i("mFocusViewList size: " + mFocusViewList.size());
-                for (View view : mFocusViewList) {
-                    copyView(view);
-                    if (((ViewInfo) view.getTag()).id == R.id.rectIcon) {
-                        int[] location = new int[2];
-                        view.getLocationOnScreen(location);
-                        int x = location[0];
-                        int y = location[1];
-                        Rect srcRect = new Rect();
-                        srcRect.left = x;
-                        srcRect.right = x + view.getWidth();
-                        srcRect.top = y;
-                        srcRect.bottom = y + view.getHeight();
-                        List<View> rectList = getNeedMoveView(srcRect, (ImageView) view);
-                        for (View view1 : rectList) {
-                            copyView(view1);
-                        }
-                    }
-                }
-                break;
-            case R.id.cancel:
-                setResult(Activity.RESULT_CANCELED);
-                finish();
-                break;
-            case R.id.done:
-
-
-                Bitmap bitmap = captureScreen();
-                FileOutputStream outputStream = null;
-                if (bitmap != null) {
-                    try {
-                        outputStream = new FileOutputStream(getExternalCacheDir() + "/draw.jpg");
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    } finally {
-                        try {
-                            if (outputStream != null) {
-                                outputStream.close();
-                            }
-                        } catch (Exception e) {
-                            Log.e(TAG, e.getMessage(), e);
-                        }
-
-                    }
-                }
-
-
-                mContent.setScaleX(1f);
-                mContent.setScaleY(1f);
-                mInfoList.clear();
-                for (View view : mViewList) {
-
-                    ViewInfo viewInfo = (ViewInfo) view.getTag();
-                    ViewInfo newViewInfo;
-
-                    if (viewInfo.type == ViewInfo.TYPE_EDITTEXT) {
-                        String string = ((EditText) view).getText().toString();
-                        if (TextUtils.isEmpty(string)) {
-                            continue;
-                        }
-                        newViewInfo = new EditTextInfo(viewInfo.id, viewInfo.degree);
-                        ((EditTextInfo) newViewInfo).text = ((EditText) view).getText().toString();
-                        newViewInfo.type = ViewInfo.TYPE_EDITTEXT;
-                    } else {
-                        newViewInfo = new ViewInfo(viewInfo.id, viewInfo.degree);
-                    }
-                    newViewInfo.color = viewInfo.color;
-                    newViewInfo.width = view.getWidth();
-                    newViewInfo.height = view.getHeight();
-                    int[] location = new int[2];
-                    view.getLocationOnScreen(location);
-                    newViewInfo.x = location[0];
-                    newViewInfo.y = location[1];
-
-                    mInfoList.add(newViewInfo);
-                }
-                Log.d(TAG, "end mInfoList : " + mInfoList.toString());
-
-                finish();
-                break;
-            case R.id.text:
-                mSelectTextTools = !mSelectTextTools;
-                if (mSelectTextTools) {
-                    mTextTools.setImageResource(R.drawable.text_select);
-                } else {
-                    mTextTools.setImageResource(R.drawable.text_normal);
-                    if (mViewList != null && !mViewList.isEmpty()) {
-                        ArrayList<View> removeViews = new ArrayList<>();
-                        for (View view : mViewList) {
-                            if (view instanceof EditText) {
-                                String string = ((EditText) view).getText().toString();
-                                if (TextUtils.isEmpty(string)) {
-                                    removeViews.add(view);
-                                    mContent.removeView(view);
-                                    LogUtils.d("移除未输入内容的EditText...");
-                                }
-                            }
-                        }
-                        if (!removeViews.isEmpty()) {
-                            mViewList.removeAll(removeViews);
-                        }
-                    }
-                }
-                break;
-//            case R.id.back:
-//                --mCurrentIndex;
-//                ElementMemento memento = mCreataker.restoreMemento(mCurrentIndex);
-//                if (memento == null) {
-//                    ++mCurrentIndex;
-//                } else {
-//                    mInfoList.clear();
-//                    mInfoList.addAll(mOriginator.restoreMemento(memento));
-//                    mOriginator.printMementos();
-//                    layoutViews();
-//                }
-//                LogUtils.d("back mCurrentIndex: " + mCurrentIndex);
-//                break;
-//            case R.id.forward:
-//                ++mCurrentIndex;
-//                memento = mCreataker.restoreMemento(mCurrentIndex);
-//                if (memento == null) {
-//                    --mCurrentIndex;
-//                } else {
-//                    mInfoList.clear();
-//                    mInfoList.addAll(mOriginator.restoreMemento(memento));
-//                    layoutViews();
-//                }
-//                LogUtils.d("forward mCurrentIndex: " + mCurrentIndex);
-//                break;
-
             default:
                 break;
         }
@@ -624,85 +356,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         return statusBarHeight;
     }
 
-    private View.OnTouchListener mTouchListener = new View.OnTouchListener() {
-        @Override
-        public boolean onTouch(View v, final MotionEvent event) {
-            int action = event.getAction();
-            if (mCurrentImageView == null && MotionEvent.ACTION_DOWN != action) {
-                return false;
 
-            }
-            switch (action) {
-                case MotionEvent.ACTION_DOWN:
-                    fdownX = event.getX();
-                    fdownY = event.getY();
-                    LogUtils.d("fdownX: " + fdownX + " ###fdownY: " + fdownY);
-                    getLineCoordinate();
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    float disX = event.getX() - fdownX - OFFSET;
-                    float disY = event.getY() - fdownY - OFFSET;
-                    LogUtils.d("disX: " + disX + " ###  disY: " + disY + " ###  getX: " + event.getX() + " ###  getY: " + event.getY());
-                    mCurrentImageView.setX(mCurrentImageView.getX() + disX);
-                    mCurrentImageView.setY(mCurrentImageView.getY() + disY);
-                    LogUtils.i("mCurrentImageView.getX(): " + mCurrentImageView.getX() + " ###  mCurrentImageView.getY(): " + mCurrentImageView.getY());
-                    fdownX = event.getX() - OFFSET;
-                    fdownY = event.getY() - OFFSET;
-                    LogUtils.v("fdownX: " + fdownX + " ###  fdownY: " + fdownY);
-
-                    imageW = mCurrentImageView.getWidth();
-                    imageH = mCurrentImageView.getHeight();
-
-                    mCurrentImageView.setBackgroundResource(android.R.color.transparent);
-                    setImageResource(mCurrentImageView, true);
-
-                    return true;
-                case MotionEvent.ACTION_UP:
-                    float x = mCurrentImageView.getX();
-                    float y = mCurrentImageView.getY();
-                    if (x <= 212) {
-                        cancelMoveView(x, y);
-                        return true;
-                    } else {
-                        if (x > 212 && x < 312) {
-                            x = 312;
-                        } else if (x > (mDisplayMetrics.widthPixels - 100)) {
-                            x = mDisplayMetrics.widthPixels - 100;
-                        }
-
-                        if (y <= 106) {
-                            y = 106;
-                        } else if (y > mDisplayMetrics.heightPixels - 100 - mStatusBarHeight) {
-                            y = mDisplayMetrics.heightPixels - 100 - mStatusBarHeight;
-                        }
-                        mCurrentImageView.setX(x - 312);
-                        mCurrentImageView.setY(y - 107);
-                        setImageResource(mCurrentImageView, false);
-                        mRootView.removeView(mCurrentImageView);
-                        mContent.addView(mCurrentImageView);
-
-                        createMemento(mCurrentImageView, false, true);
-
-                        if (((ViewInfo) mCurrentImageView.getTag()).id == R.id.rectIcon) {
-                            mCurrentImageView.setBackgroundResource(R.drawable.border_shape);
-                        } else {
-                            mCurrentImageView.setBackgroundResource(android.R.color.transparent);
-                        }
-                    }
-                    mCurrentImageView = null;
-                    break;
-                case MotionEvent.ACTION_CANCEL:
-                    float x1 = mCurrentImageView.getX();
-                    float y1 = mCurrentImageView.getY();
-                    cancelMoveView(x1, y1);
-                    break;
-            }
-            return false;
-        }
-    };
-
-
-    private void createMemento(View view, boolean isDelete, boolean isNewElement) {
+    //private void createMemento(View view, boolean isDelete, boolean isNewElement) {
 
 //        if (mInfoList == null) {
 //            mInfoList = new ArrayList<>();
@@ -759,28 +414,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 //        mOriginator.setInfos(infos);
 //        mCreataker.createMemento(mOriginator.createMemento(), mCurrentIndex);
 
-    }
+    //}
 
-    private void cancelMoveView(float x, float y) {
-        TranslateAnimation translateAnimation = new TranslateAnimation(0, locationX - x, 0, locationY - y);
-        translateAnimation.setDuration(200);
-        translateAnimation.setAnimationListener(new Animation.AnimationListener() {
-            @Override
-            public void onAnimationStart(Animation animation) {
-            }
-
-            @Override
-            public void onAnimationEnd(Animation animation) {
-                mRootView.removeView(mCurrentImageView);
-            }
-
-            @Override
-            public void onAnimationRepeat(Animation animation) {
-
-            }
-        });
-        mCurrentImageView.startAnimation(translateAnimation);
-    }
 
     private View.OnClickListener mSquareBarClickListener = new View.OnClickListener() {
         @Override
@@ -812,32 +447,26 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     @Override
     public void onCheckedChanged(RadioGroup radioGroup, int checkedId) {
 
-        switch (checkedId) {
-            case R.id.rb_black:
-                mCurrentColor = 0;
-                mLineBitmap = mLineBitmapBlack;
-
-                break;
-            case R.id.rb_green:
-                mCurrentColor = 1;
-                mLineBitmap = mLineBitmapGreen;
-
-                break;
-            case R.id.rb_red:
-                mCurrentColor = 2;
-                mLineBitmap = mLineBitmapRed;
-
-                break;
-            default:
-                LogUtils.e("default checkedId: " + checkedId, new IllegalArgumentException());
-                break;
-        }
-        for (View view : mFocusViewList) {
-            if (view instanceof ImageView) {
-                createMemento(view, false, false);
-                setImageResource((ImageView) view, false);
-            }
-        }
+//        switch (checkedId) {
+//            case R.id.rb_black:
+//                mCurrentColor = 0;
+//                mLineBitmap = mLineBitmapBlack;
+//
+//                break;
+//            case R.id.rb_green:
+//                mCurrentColor = 1;
+//                mLineBitmap = mLineBitmapGreen;
+//
+//                break;
+//            case R.id.rb_red:
+//                mCurrentColor = 2;
+//                mLineBitmap = mLineBitmapRed;
+//
+//                break;
+//            default:
+//                LogUtils.e("default checkedId: " + checkedId, new IllegalArgumentException());
+//                break;
+//        }
     }
 
 
@@ -851,11 +480,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         @Override
         public boolean onTouch(View v, MotionEvent event) {
             int action = event.getAction();
-
-            float targetX = 0;
-            float targetY = 0;
-            float targetRight = 0;
-            float targetBottom = 0;
             int imageWidth=v.getWidth();
             int imageHeight=v.getHeight();
 
@@ -876,7 +500,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     srcRect.right = x0 + imageView.getWidth();
                     srcRect.top = y0;
                     srcRect.bottom = y0 + imageView.getHeight();
-                    getLineCoordinate();
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     float x1 = event.getX();
@@ -903,126 +526,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                         imageView.setY(imageView.getY() + disY);
                         imageView.requestLayout();
                     }
-//                    else {
-//                        if (mFocusViewList.contains(imageView)) {
-//                            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) imageView.getLayoutParams();
-//                            params.width = imageW + (int) disX;
-//                            params.height = imageH + (int) disY;
-//                            imageView.requestLayout();
-//                        } else { //处理图标拖动
-//
-//                            imageView.setX(imageView.getX() + disX - OFFSET);
-//                            imageView.setY(imageView.getY() + disY - OFFSET);
-//                            imageView.setBackgroundResource(android.R.color.transparent);
-//
-//                            targetX = imageView.getX();
-//                            targetY = imageView.getY();
-//                            targetRight = targetX + imageW;
-//                            targetBottom = targetY + imageH;
-////                                LogUtils.d("ACTION_MOVE " + (int) targetX + "," + (int) targetY + "," + (int) targetRight + "," + (int) targetBottom);
-//
-//                            for (int i = 0; i < mTops.size(); i++) {
-//                                float consultTop = mTops.get(i);
-//                                View line = mLines.get(i);
-//                                ViewInfo lineInfo = (ViewInfo) line.getTag();
-//                                if ((lineInfo.degree == 90 || lineInfo.degree == 270) && Math.abs(consultTop - targetBottom) <= LIMIT) { //在竖线上面
-//                                    int lineMiddleX = (2 * mRights.get(i) - line.getHeight()) / 2;//获取到线条的y/2
-//                                    if (disX >= 0) { //从左往右
-//                                        if (Math.abs(mLefts.get(i) - targetRight) <= OFFSET) {
-//                                            imageView.setX(lineMiddleX - imageW / 2);
-//                                            imageView.setY(consultTop - imageH + PADDING);
-//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
-//                                            Log.d(TAG, "竖线上边匹配成功 从左往右 targetBottom : " + targetBottom + ", consultTop: " + consultTop);
-//                                        }
-//                                    } else {
-//                                        if (Math.abs(targetX - mRights.get(i)) <= OFFSET) {
-//                                            imageView.setX(lineMiddleX - imageW / 2);
-//                                            imageView.setY(consultTop - imageH + PADDING);
-//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
-//                                            Log.d(TAG, "竖线上边匹配成功 从右往左 targetBottom : " + targetBottom + ", consultTop: " + consultTop);
-//                                        }
-//                                    }
-//                                }
-//                            }
-//
-//                            for (int i = 0; i < mBottoms.size(); i++) {
-//                                float consultBottom = mBottoms.get(i);
-//                                View line = mLines.get(i);
-//                                ViewInfo lineInfo = (ViewInfo) line.getTag();
-//                                if ((lineInfo.degree == 90 || lineInfo.degree == 270) && Math.abs(targetY - consultBottom) <= LIMIT) {
-//                                    int lineMiddleX = (2 * mRights.get(i) - line.getHeight()) / 2;//获取到线条的y/2
-//                                    if (disX >= 0) { //从左往右
-//                                        if (Math.abs(mLefts.get(i) - targetRight) <= OFFSET) {
-//                                            imageView.setX(lineMiddleX - imageW / 2);
-//                                            imageView.setY(consultBottom - PADDING);
-//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
-//                                            Log.i(TAG, "竖线下边匹配成功 从左往右 targetY : " + targetY + ", consultBottom : " + consultBottom);
-//                                        }
-//                                    } else {
-//                                        if (Math.abs(targetX - mRights.get(i)) <= OFFSET) {
-//                                            imageView.setX(lineMiddleX - imageW / 2);
-//                                            imageView.setY(consultBottom - PADDING);
-//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
-//                                            Log.i(TAG, "竖线下边匹配成功 从右往左 targetY : " + targetY + ", consultBottom : " + consultBottom);
-//                                        }
-//                                    }
-//                                }
-//                            }
-//
-//                            for (int i = 0; i < mLefts.size(); i++) {
-//                                float consultLeft = mLefts.get(i);
-//                                View line = mLines.get(i);
-//                                ViewInfo lineInfo = (ViewInfo) line.getTag();
-//                                if ((lineInfo.degree == 0 || lineInfo.degree == 180) && Math.abs(consultLeft - targetRight) <= LIMIT) {
-//                                    int lineMiddleY = (2 * mBottoms.get(i) - line.getHeight()) / 2;//获取到线条的y/2
-//                                    int newY = lineMiddleY - imageH / 2;
-//                                    if (disY >= 0) { //从上到下
-//                                        if (Math.abs(mTops.get(i) - targetBottom) <= OFFSET) {
-//                                            imageView.setX(consultLeft - imageW + PADDING);
-//                                            imageView.setY(newY);
-//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
-//                                            Log.d(TAG, "横线左边匹配成功 从上往下 targetRight : " + targetRight + " , consultLeft: " + consultLeft);
-//                                        }
-//                                    } else {
-//                                        if (Math.abs(targetY - mBottoms.get(i)) <= OFFSET) {
-//                                            imageView.setX(consultLeft - imageW + PADDING);
-//                                            imageView.setY(newY);
-//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
-//                                            Log.d(TAG, "横线左边匹配成功 从下往上 targetRight : " + targetRight + " , consultLeft: " + consultLeft);
-//                                        }
-//                                    }
-//                                }
-//                            }
-//
-//                            for (int i = 0; i < mRights.size(); i++) {
-//                                float consultRight = mRights.get(i);
-//                                View line = mLines.get(i);
-//                                ViewInfo lineInfo = (ViewInfo) line.getTag();
-//                                if ((lineInfo.degree == 0 || lineInfo.degree == 180) && Math.abs(targetX - consultRight) <= LIMIT) {
-//                                    int lineMiddleY = (2 * mBottoms.get(i) - line.getHeight()) / 2;//获取到线条的y/2
-//                                    int newY = lineMiddleY - imageH / 2;
-//                                    Log.d(TAG, "lineMiddleY : " + lineMiddleY + ", newY: " + newY);
-//                                    if (disY >= 0) { //从上往下 1.如果targetBottom - con
-//                                        if (Math.abs(mTops.get(i) - targetBottom) <= OFFSET) {
-//                                            imageView.setX(consultRight - PADDING);
-//                                            imageView.setY(newY);
-//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
-//                                            Log.d(TAG, "横线右边匹配成功 从上往下 targetX : " + targetX + " , consultRight: " + consultRight);
-//                                        }
-//                                    } else {
-//                                        if (Math.abs(targetY - mBottoms.get(i)) <= OFFSET) {
-//                                            imageView.setX(consultRight - PADDING);
-//                                            imageView.setY(newY);
-//                                            imageView.setBackgroundResource(R.drawable.border_shape_green);
-//                                            Log.d(TAG, "横线右边匹配成功 从下往上 targetX : " + targetX + " , consultRight: " + consultRight);
-//                                        }
-//                                    }
-//
-//                                }
-//                            }
-//
-//                        }
-//                    }
                     return true;
                 case MotionEvent.ACTION_UP:
                     float x = imageView.getX();
@@ -1031,62 +534,22 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     if (time > 200) {
                         //it's long click
                     } else {
-                        if ( mRectList != null && !mRectList.isEmpty()) {
-                            boolean hasFocusOtherView = false;
-                            for (View view : mRectList) {
-                                int[] location = new int[2];
-                                view.getLocationOnScreen(location);
-                                Rect rect = new Rect();
-                                rect.left = location[0];
-                                rect.right = location[0] + view.getWidth();
-                                rect.top = location[1];
-                                rect.bottom = location[1] + view.getHeight();
-
-                                imageView.getLocationOnScreen(location);
-                                int pX = location[0] + (int) event.getX();
-                                int pY = location[1] + (int) event.getY();
-                                if (rect.contains(pX, pY)) {
-                                    hasFocusOtherView = true;
-                                    mFocusViewList.add(view);
-                                    view.setBackgroundResource(R.drawable.border_shape_blue);
-                                    imageView.setBackgroundResource(R.drawable.border_shape);
-                                    mFocusViewList.remove(imageView);
-                                    imageView.setOnTouchListener(null);
-                                    break;
-                                }
-                            }
-
-                            if (!hasFocusOtherView) {
-                                imageView.setOnTouchListener(new SquareTouchListener(imageView));
-                                mFocusViewList.add(imageView);
-                                imageView.setBackgroundResource(R.drawable.border_shape_blue);
-                                if (mRectList != null) {
-                                    for (View view : mRectList) {
-                                        view.setBackgroundColor(Color.TRANSPARENT);
-                                        mFocusViewList.remove(view);
-                                    }
-                                }
-                                imageView.requestLayout();
-                            }
-//                            removeViews(v);
+                        if (mAdjustViewList.contains(imageView)) {
+                            mFocusViewList.clear();
+                            mFocusViewList.add(imageView);
+                            mAdjustViewList.clear();
+                            imageView.setBackgroundResource(R.drawable.border_shape_green);
+                            Toast.makeText(MainActivity.this, "resize mode", Toast.LENGTH_SHORT).show();
                         } else {
-                            if (mAdjustViewList.contains(imageView)) {
-                                mFocusViewList.clear();
-                                mFocusViewList.add(imageView);
-                                mAdjustViewList.clear();
-                                imageView.setBackgroundResource(R.drawable.border_shape_green);
-                                Toast.makeText(MainActivity.this, "resize mode", Toast.LENGTH_SHORT).show();
-                            } else {
-                                mAdjustViewList.clear();
-                                mAdjustViewList.add(imageView);
-                                mFocusViewList.clear();
-                                imageView.setBackgroundResource(R.drawable.border_shape_blue);
-                                Toast.makeText(MainActivity.this, "replace mode", Toast.LENGTH_SHORT).show();
-                            }
+                            mAdjustViewList.clear();
+                            mAdjustViewList.add(imageView);
+                            mFocusViewList.clear();
+                            imageView.setBackgroundResource(R.drawable.border_shape_blue);
+                            Toast.makeText(MainActivity.this, "replace mode", Toast.LENGTH_SHORT).show();
+                        }
 
-                            if (Math.abs(x - downImageX) <= 5 && Math.abs(y - downImageY) <= 5) {
-                                imageView.setBackgroundResource(R.drawable.border_shape_blue);
-                            }
+                        if (Math.abs(x - downImageX) <= 5 && Math.abs(y - downImageY) <= 5) {
+                            imageView.setBackgroundResource(R.drawable.border_shape_blue);
                         }
                     }
                     if (x < 0) {
@@ -1106,12 +569,9 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     }
 
                     if (Math.abs(mStartX - x) >= 3 || Math.abs(mStartY - y) >= 3) {
-                        createMemento(imageView, false, false);
+                        //createMemento(imageView, false, false);
                     }
 
-                    if (mRectList != null) {
-                        mRectList.clear();
-                    }
                     return true;
             }
             return false;
@@ -1144,35 +604,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     }
 
 
-    private void getLineCoordinate() {
-        mLefts.clear();
-        mTops.clear();
-        mRights.clear();
-        mBottoms.clear();
-        mLines.clear();
-//        for (View view : mViewList) {
-//            ViewInfo viewInfo = (ViewInfo) view.getTag();
-//            if (R.id.lineIcon == viewInfo.id || R.id.xuxianIcon == viewInfo.id) {
-//                mLines.add(view);
-//
-//                int x = (int) view.getX();
-//                int y = (int) view.getY();
-//                int bottom = y + view.getHeight();
-//                int right = x + view.getWidth();
-//
-//                mLefts.add(x);
-//                mTops.add(y);
-//                mRights.add(right);
-//                mBottoms.add(bottom);
-//            }
-//        }
 
-        Log.d(TAG, "mLefts : " + mLefts.toString());
-        Log.i(TAG, "mTops : " + mTops.toString());
-        Log.d(TAG, "mRights : " + mRights.toString());
-        Log.i(TAG, "mBottoms : " + mBottoms.toString());
-
-    }
 
     public Bitmap captureScreen() {
         // 允许当前窗口保存缓存信息
@@ -1225,58 +657,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         return srcRect.contains(checkRect);
     }
 
-    private List<View> getNeedMoveView(Rect srcRect, ImageView imageView) {
-        List<View> list = new ArrayList<View>();
-        for (View view : mViewList) {
-            if (view == imageView) {
-                continue;
-            }
-            int[] location = new int[2];
-            view.getLocationOnScreen(location);
-            int x = location[0];
-            int y = location[1];
-            Rect checkRect = new Rect();
-            checkRect.left = x + 25;
-            checkRect.right = x + view.getWidth() - 25;
-            checkRect.top = y + 25;
-            checkRect.bottom = y + view.getHeight() - 25;
-            if (inRange(srcRect, checkRect)) {
-                list.add(view);
-            }
-        }
 
-        return list;
-    }
-
-    private void copyView(View view) {
-
-        final ImageView imageView = new ImageView(MainActivity.this);
-        ViewInfo tag = (ViewInfo) view.getTag();
-        ViewInfo viewInfo = new ViewInfo(tag.id, tag.degree);
-        viewInfo.type = tag.type;
-        viewInfo.color = tag.color;
-        viewInfo.realId = ++mRealInfoId;
-        viewInfo.width = tag.width;
-        viewInfo.height = tag.height;
-        imageView.setTag(viewInfo);
-        imageView.setScaleType(ImageView.ScaleType.FIT_XY);
-        setImageResource(imageView, false);
-        int[] location = new int[2];
-        view.getLocationOnScreen(location);
-        locationX = location[0];
-        locationY = location[1];
-        imageView.setX(locationX + 5);
-        imageView.setY(locationY + 5);
-        imageView.setOnTouchListener(new SquareTouchListener(imageView));
-        if (viewInfo.degree != 0) {
-            imageView.setRotation(viewInfo.degree);
-        }
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(view.getWidth(), view.getHeight());
-        mContent.addView(imageView, params);
-        mViewList.add(imageView);
-
-        createMemento(imageView, false, true);
-    }
 
     public class ScaleGestureListener implements ScaleGestureDetector.OnScaleGestureListener {
         @Override
@@ -1286,8 +667,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             float scale = mCurrentScale + dScale;
             if (scale > 4.0f) {
                 scale = 4.0f;
-            } else if (scale < 1f) {
-                scale = 1f;
+            } else if (scale < 0.5f) {
+                scale = 0.5f;
             }
             mContent.setScaleX(scale);
             mContent.setScaleY(scale);
@@ -1321,26 +702,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                                 mContentDownX = event.getX();
                                 mContentDownY = event.getY();
                                 for (View view : mViewList) {
-//                                    if (((ViewInfo) view.getTag()).id == R.id.rectIcon) {
-//                                        Log.d(TAG, "rectIcon onDown...");
-//                                        view.setBackgroundResource(R.drawable.border_shape);
-//                                    } else {
-//                                        Log.i(TAG, "not rectIcon onDown...");
-//                                        view.setBackgroundColor(Color.TRANSPARENT);
-//                                    }
-//                                    if (((ViewInfo) view.getTag()).id == R.id.rectIcon) {
-//                                        view.setOnTouchListener(new MyTouchListener((ImageView) view));
-//                                        int[] location = new int[2];
-//                                        view.getLocationOnScreen(location);
-//                                        Rect rect = new Rect();
-//                                        rect.left = location[0];
-//                                        rect.right = location[0] + view.getWidth();
-//                                        rect.top = location[1];
-//                                        rect.bottom = location[1] + view.getHeight();
-//                                        if (rect.contains((int) event.getX(), (int) event.getY())) {
-//                                            view.setBackgroundResource(R.drawable.border_shape_blue);
-//                                        }
-//                                    }
                                     view.setOnTouchListener(null);
                                     view.setBackgroundResource(R.drawable.border_shape);
                                 }
@@ -1374,39 +735,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                             case MotionEvent.ACTION_UP:
 
                                 mMoved = false;
-
-                                if (mSelectTextTools) {
-
-                                    float x = event.getRawX();
-                                    float y = event.getRawY();
-                                    Log.i(TAG, "x: " + x + "### y：" + y);
-
-                                    if (x <= 312 || x >= 1920 || y <= 106 || y >= 1200) {
-                                        Log.d(TAG, "不在画布区域内 x: " + x + "### y：" + y);
-                                        return true;
-                                    } else {
-                                        EditText editText = new EditText(MainActivity.this);
-                                        editText.requestFocus();
-                                        editText.setX(x - 312);
-                                        editText.setY(y - 106);
-                                        editText.setId(mViewList.size() + 1);
-                                        ViewInfo viewInfo = new EditTextInfo(editText.getId(), 0);
-                                        viewInfo.realId = ++mRealInfoId;
-                                        viewInfo.type = ViewInfo.TYPE_EDITTEXT;
-                                        viewInfo.x = editText.getX();
-                                        viewInfo.y = editText.getY();
-                                        editText.setTag(viewInfo);
-
-                                        Log.d(TAG, "editTextId : " + editText.getId());
-                                        mViewList.add(editText);
-                                        editText.setBackgroundResource(R.drawable.border_shape_focus);
-                                        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-                                        mContent.addView(editText, layoutParams);
-                                        createMemento(editText, false, true);
-
-                                    }
-
-                                }
                                 return false;
                             default:
                                 break;
@@ -1487,15 +815,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                             .load(urlInfo.getBackgroundURL())
                             .error(R.drawable.example)
                             .into(backgroundView);
-//                    mFreespace =Bitmap.createBitmap(backgroundView.getWidth(), backgroundView.getHeight(), Bitmap.Config.ARGB_4444);
-//                    canvas = new Canvas(mFreespace);
-//                    paint = new Paint();
-//                    paint.setStrokeCap(Paint.Cap.ROUND);
-//                    paint.setStrokeJoin(Paint.Join.ROUND);
-//                    paint.setStrokeWidth(5);
-//                    paint.setColor(Color.BLACK);
-//                    paint.setAntiAlias(true);
-                    //canvas.drawBitmap(mTempBitmap, new Matrix(), paint);
                     parseType = PARSE_SQUARE;
                     try {
                         url = new URL(urlInfo.getSquareURL());
@@ -1534,7 +853,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         }
     };
     private void sendRequestWithHttpURLConnection(){
-        //开启线程来发起网络请求
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -1636,7 +954,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
                         in.close();
                         System.out.println(responseData);
-                        Toast.makeText(MainActivity.this, responseData+jsonString, Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(MainActivity.this, responseData+jsonString, Toast.LENGTH_SHORT).show();
 
                     }
 
@@ -1667,7 +985,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 mTempBitmap = Bitmap.createScaledBitmap(mFreespace, realImageWidth, realImageHeight, true);
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 mTempBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-
+                mTempBitmap.recycle();
                 String lineEnd = "\r\n";
                 String twoHyphens = "--";
                 String boundary = "*****";
@@ -1727,7 +1045,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
                         in.close();
                         System.out.println(responseData);
-                        Toast.makeText(MainActivity.this, responseData+jsonString, Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(MainActivity.this, responseData+jsonString, Toast.LENGTH_SHORT).show();
 
                     }
 
@@ -1743,8 +1061,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 }
             }
         }).start();
-
-
         return 0;
     }
 
