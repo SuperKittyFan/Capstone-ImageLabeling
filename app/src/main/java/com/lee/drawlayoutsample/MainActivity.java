@@ -734,6 +734,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     case MotionEvent.ACTION_UP:
                         long time = System.currentTimeMillis() - downTime;
                         if (time <= 200) {
+                            mCurrentFocusView=b;
                             if (mAdjustCurveList.contains(b)) {
                                 mFocusCurveList.clear();
                                 mFocusCurveList.add(b);
