@@ -23,13 +23,13 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1">
-                <ImageView android:id="@+id/lineIcon"
-                           android:layout_width="100px"
-                           android:layout_height="100px"
-                           android:layout_centerInParent="true"
-                           android:scaleType="fitXY"
-                           android:src="@drawable/line"
-                />
+                <ImageView android:id="@+id/rectIconCar"
+                    android:layout_width="100px"
+                    android:layout_height="100px"
+                    android:background="@drawable/car"
+                    android:scaleType="fitXY" android:layout_centerVertical="true"
+                    android:layout_centerHorizontal="true"/>
+
             </RelativeLayout>
 
             <RelativeLayout
@@ -37,10 +37,10 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1">
-                <ImageView android:id="@+id/rectIcon"
+                <ImageView android:id="@+id/rectIconPerson"
                     android:layout_width="100px"
                     android:layout_height="100px"
-                    android:background="@drawable/border_shape_white"
+                    android:background="@drawable/person"
                     android:scaleType="fitXY" android:layout_centerVertical="true"
                     android:layout_centerHorizontal="true"/>
             </RelativeLayout>
@@ -184,12 +184,13 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1">
-                <ImageView
-                           android:layout_width="100px"
-                           android:layout_height="100px"
-                           android:layout_centerInParent="true"
-                           android:scaleType="fitXY"
-                          />
+                <ImageView android:id="@+id/lineIcon"
+                    android:layout_width="100px"
+                    android:layout_height="100px"
+                    android:layout_centerInParent="true"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/line"
+                    />
             </RelativeLayout>
         </LinearLayout>
 

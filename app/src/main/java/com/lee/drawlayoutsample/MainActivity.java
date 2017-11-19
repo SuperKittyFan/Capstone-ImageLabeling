@@ -70,9 +70,13 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private int realImageHeight = 0;
     private ScaleGestureDetector mScaleGestureDetector;
     private ScaleGestureListener mScaleGestureListener = new ScaleGestureListener();
-    private Set<View> mViewList = new HashSet<View>();
-    private Set<View> mFocusViewList = new HashSet<View>();
-    private Set<View> mAdjustViewList = new HashSet<View>();
+    private Set<View> mSquareList = new HashSet<View>();
+    private Set<View> mFocusSquareList = new HashSet<View>();
+    private Set<View> mAdjustSquareList = new HashSet<View>();
+    private Set<BezierCurve> mCurveList = new HashSet<BezierCurve>();
+    private Set<View> mFocusCurveList = new HashSet<View>();
+    private Set<View> mAdjustCurveList = new HashSet<View>();
+    private List<Curve> cList=new ArrayList<Curve>();
     private long downTime = 0;
     private float downX = 0f;
     private float downY = 0f;
@@ -88,7 +92,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private DisplayMetrics mDisplayMetrics;
     private int mStatusBarHeight = 0;
     private FrameLayout mRootView;
-    private ImageView mCurrentImageView;
+    private View mCurrentFocusView;
     private boolean canvasZoomEnabled = false;
 
     private Bitmap mTempBitmap;
@@ -128,7 +132,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
         try {
-            url = new URL("http://67.216.209.114/ask.php");
+            url = new URL("http://139.196.85.93/ask.php");
         }
         catch(Exception e) {
         }
@@ -141,8 +145,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         foregroundView = (ImageView) findViewById(R.id.foregroundView);
 
 
-        RadioGroup radioGroup = (RadioGroup) findViewById(R.id.radiogroup);
-        radioGroup.setOnCheckedChangeListener(this);
         mContentLayoutParams = (FrameLayout.LayoutParams) mContent.getLayoutParams();
         mContentLayoutParams.width = mDisplayMetrics.widthPixels - 312;
         mContentLayoutParams.height = mDisplayMetrics.heightPixels - mStatusBarHeight - 107;
@@ -154,11 +156,10 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         mScaleGestureDetector = new ScaleGestureDetector(this, mScaleGestureListener);
 
 
-        ImageView lineImageView = (ImageView) findViewById(R.id.lineIcon);
-        lineImageView.setOnTouchListener(null);
-        lineImageView.setOnClickListener(null);
-        ImageView rect = (ImageView) findViewById(R.id.rectIcon);
+        ImageView rect1 = (ImageView) findViewById(R.id.rectIconCar);
+        ImageView rect = (ImageView) findViewById(R.id.rectIconPerson);
         //rect.setOnTouchListener(mTouchListener);
+        rect1.setOnClickListener(mSquareBarClickListener);
         rect.setOnClickListener(mSquareBarClickListener);
 
 
@@ -169,20 +170,17 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         resetListener.setOnClickListener(mResetListener);
 
 
-        findViewById(R.id.clear).setOnClickListener(this);
-        findViewById(R.id.rotate).setOnClickListener(this);
         findViewById(R.id.delete).setOnClickListener(this);
-        findViewById(R.id.copy).setOnClickListener(this);
-        findViewById(R.id.cancel).setOnClickListener(this);
-        findViewById(R.id.done).setOnClickListener(this);
         findViewById(R.id.back).setOnClickListener(this);
         findViewById(R.id.forward).setOnClickListener(this);
         findViewById(R.id.send_request).setOnClickListener(this);
         findViewById(R.id.paint).setOnClickListener(this);
         findViewById(R.id.erase).setOnClickListener(this);
-        mTextTools = (ImageView) findViewById(R.id.text);
-        mTextTools.setOnClickListener(this);
-        mViewList.clear();
+        findViewById(R.id.lineIcon).setOnClickListener(this);
+        findViewById(R.id.curve_only).setOnClickListener(this);
+        labelInfo.setCurve(cList);
+        mSquareList.clear();
+        mCurveList.clear();
         parseType=PARSE_URLINFO;
         sendRequestWithHttpURLConnection();
 
@@ -190,7 +188,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
     private void layoutViews() {
 
-        mViewList.clear();
+        mSquareList.clear();
+        mCurveList.clear();
         if (labelInfo.getSquare()!=null){
             for (Square square: labelInfo.getSquare()){
                 float xmax=square.getXmax();
@@ -212,15 +211,34 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 imageView.setTag(square);
                 imageView.setX(realXmin);
                 imageView.setY(realYmin);
-                imageView.setBackgroundResource(R.drawable.border_shape);
-                mViewList.add(imageView);
-                mAdjustViewList.clear();
-                mFocusViewList.clear();
+                if (square.getTypeofSquare().equals("person")){
+                    imageView.setBackgroundResource(R.drawable.border_shape_red);
+                }
+                else{
+                    imageView.setBackgroundResource(R.drawable.border_shape_yellow);
+                }
+                mSquareList.add(imageView);
+                mAdjustSquareList.clear();
+                mFocusSquareList.clear();
                 mContent.addView(imageView, mContentLayoutParams);
 
             }
         }
 
+    }
+
+    private void refreshSquareViews(){
+        for (View v :mSquareList){
+            if (mCurrentFocusView!=v){
+                Square square = (Square) v.getTag();
+                if (square.getTypeofSquare().equals("person")){
+                    v.setBackgroundResource(R.drawable.border_shape_red);
+                }
+                else{
+                    v.setBackgroundResource(R.drawable.border_shape_yellow);
+                }
+            }
+        }
     }
 
 
@@ -258,10 +276,32 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
+            case R.id.curve_only:
+                foregroundView.setVisibility(View.GONE);
+                for (View view:mSquareList){
+                    view.setVisibility(View.GONE);
+                }
+                break;
+            case R.id.lineIcon:
+                final BezierCurve bezierCurve = new BezierCurve(mContent.getContext());
+                Curve curve = new Curve();
+                if (labelInfo.getCurve()==null)
+                    labelInfo.setCurve(cList);
+                labelInfo.getCurve().add(curve);
+                bezierCurve.setTag(curve);
+                int[] location = new int[2];
+                mContent.addView(bezierCurve);
+                mCurveList.add(bezierCurve);
+                mAdjustCurveList.clear();
+                mFocusCurveList.clear();
+                mAdjustCurveList.add(bezierCurve);
+                mCurrentFocusView=bezierCurve;
+                bezierCurve.setOnTouchListener(new BezierTouchListener(bezierCurve));
+                break;
             case R.id.paint:
                 foregroundView.setOnTouchListener(new FreespaceTouchListener(foregroundView));
                 paint.setColor(Color.rgb(2,192,1));
-                for (View view:mViewList){
+                for (View view:mSquareList){
                     view.setVisibility(View.GONE);
                 }
                 Toast.makeText(v.getContext(),"Paint enabled",Toast.LENGTH_SHORT).show();
@@ -270,24 +310,27 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 foregroundView.setOnTouchListener(new FreespaceTouchListener(foregroundView));
                 paint.setColor(Color.BLACK);
 
-                for (View view:mViewList){
+                for (View view:mSquareList){
                     view.setVisibility(View.GONE);
                 }
                 Toast.makeText(v.getContext(),"Erasor enabled",Toast.LENGTH_SHORT).show();
                 break;
             case R.id.delete:
-                for (View view : new ArrayList<View>(mFocusViewList)) {
-                    removeViews(view);
+                if (mFocusCurveList.contains(mCurrentFocusView)
+                        || mAdjustCurveList.contains(mCurrentFocusView)){
+                    removeCurveViews(mCurrentFocusView);
+                    mCurrentFocusView=null;
                 }
-                for (View view : new ArrayList<View>(mAdjustViewList)) {
-                    removeViews(view);
+                else if (mFocusSquareList.contains(mCurrentFocusView)
+                        || mAdjustSquareList.contains(mCurrentFocusView)){
+                    removeViews(mCurrentFocusView);
+                    mCurrentFocusView=null;
                 }
-
                 mContent.requestLayout();
                 break;
             case R.id.send_request:
                 //transform all the labeled data
-                for (View squareView: mViewList){
+                for (View squareView: mSquareList){
                     Square square = (Square) squareView.getTag();
 
                     float realWidth=squareView.getWidth();
@@ -302,19 +345,40 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     square.setYmax(ymin+(int)height);
                     mContent.removeView(squareView);
                 }
+                for (BezierCurve b: mCurveList){
+                    Curve c=(Curve)b.getTag();
+
+                    int startX= (int) (b.start.x*realImageWidth/imageW);
+                    int startY= (int) (b.start.y*realImageHeight/imageH);
+                    int endX= (int) (b.end.x*realImageWidth/imageW);
+                    int endY= (int) (b.end.y*realImageHeight/imageH);
+                    int controlX= (int) (b.control.x*realImageWidth/imageW);
+                    int controlY= (int) (b.control.y*realImageHeight/imageH);
+                    c.setStartX(startX);
+                    c.setStartY(startY);
+                    c.setEndX(endX);
+                    c.setEndY(endY);
+                    c.setControlX(controlX);
+                    c.setControlY(controlY);
+                    mContent.removeView(b);
+                }
                 //clear the current view list
-                mViewList.clear();
-                mAdjustViewList.clear();
-                mFocusViewList.clear();
+                mSquareList.clear();
+                mCurveList.clear();
+                mAdjustSquareList.clear();
+                mFocusSquareList.clear();
+                mAdjustCurveList.clear();
+                mFocusCurveList.clear();
 
                 //upload labeldata and freespace
                 uploadJson(urlInfo.getSquareURL());
                 uploadImage(urlInfo.getLayerURL());
 
+
                 //fetch new url info
                 parseType=PARSE_URLINFO;
                 try {
-                    url = new URL("http://67.216.209.114/ask.php");
+                    url = new URL("http://139.196.85.93/ask.php");
                 }
                 catch(Exception e) {
                 }
@@ -327,10 +391,19 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
     private void removeViews(View view) {
         mContent.removeView(view);
-        mViewList.remove(view);
+        mSquareList.remove(view);
         labelInfo.getSquare().remove(view.getTag());
-        mFocusViewList.remove(view);
-        mAdjustViewList.remove(view);
+        mFocusSquareList.remove(view);
+        mAdjustSquareList.remove(view);
+
+    }
+
+    private void removeCurveViews(View view){
+        mContent.removeView(view);
+        mCurveList.remove(view);
+        labelInfo.getCurve().remove(view.getTag());
+        mFocusCurveList.remove(view);
+        mAdjustCurveList.remove(view);
     }
 
 
@@ -421,9 +494,18 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         @Override
         public void onClick(View v) {
             final ImageView imageView = new ImageView(MainActivity.this);
-            mCurrentImageView = imageView;
             Square square = new Square();
             labelInfo.getSquare().add(square);
+            switch (v.getId()) {
+                case R.id.rectIconCar:
+                    square.setTypeofSquare("car");
+                    break;
+                case R.id.rectIconPerson:
+                    square.setTypeofSquare("person");
+                    break;
+                default:
+                    break;
+            }
             imageView.setTag(square);
             imageView.setScaleType(ImageView.ScaleType.FIT_XY);
             imageView.setBackgroundResource(R.drawable.border_shape_blue);
@@ -435,10 +517,12 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             imageView.setY(locationY + 300);
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(v.getWidth() * 4, v.getHeight() * 4);
             mContent.addView(imageView, params);
-            mViewList.add(imageView);
-            mAdjustViewList.clear();
-            mFocusViewList.clear();
-            mAdjustViewList.add(imageView);
+            mCurrentFocusView= imageView;
+            mSquareList.add(imageView);
+            mAdjustSquareList.clear();
+            mFocusSquareList.clear();
+            mAdjustSquareList.add(imageView);
+            refreshSquareViews();
             imageView.setOnTouchListener(new SquareTouchListener(imageView));
         }
     };
@@ -508,20 +592,20 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     float disY = y1 - downY;
                     LogUtils.i("disX : " + (int) disX + ", disY : " + (int) disY);
 
-                    if ( mFocusViewList.contains(imageView)) {
+                    if ( mFocusSquareList.contains(imageView)) {
                         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) imageView.getLayoutParams();
                         params.width = imageWidth + (int) disX;
-                        if (params.width < 50) {
-                            params.width = 50;
+                        if (params.width < 30) {
+                            params.width = 30;
                         }
                         params.height = imageHeight + (int) disY;
-                        if (params.height < 50) {
-                            params.height = 50;
+                        if (params.height < 30) {
+                            params.height = 30;
                         }
                         imageView.requestLayout();
                         downX=x1;
                         downY=y1;
-                    } else if (mAdjustViewList.contains(imageView)) {
+                    } else if (mAdjustSquareList.contains(imageView)) {
                         imageView.setX(imageView.getX() + disX);
                         imageView.setY(imageView.getY() + disY);
                         imageView.requestLayout();
@@ -534,19 +618,22 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     if (time > 200) {
                         //it's long click
                     } else {
-                        if (mAdjustViewList.contains(imageView)) {
-                            mFocusViewList.clear();
-                            mFocusViewList.add(imageView);
-                            mAdjustViewList.clear();
+                        mCurrentFocusView= imageView;
+                        if (mAdjustSquareList.contains(imageView)) {
+                            mFocusSquareList.clear();
+                            mFocusSquareList.add(imageView);
+                            mAdjustSquareList.clear();
                             imageView.setBackgroundResource(R.drawable.border_shape_green);
                             Toast.makeText(MainActivity.this, "resize mode", Toast.LENGTH_SHORT).show();
                         } else {
-                            mAdjustViewList.clear();
-                            mAdjustViewList.add(imageView);
-                            mFocusViewList.clear();
+                            mAdjustSquareList.clear();
+                            mAdjustSquareList.add(imageView);
+                            mFocusSquareList.clear();
                             imageView.setBackgroundResource(R.drawable.border_shape_blue);
                             Toast.makeText(MainActivity.this, "replace mode", Toast.LENGTH_SHORT).show();
                         }
+
+                        refreshSquareViews();
 
                         if (Math.abs(x - downImageX) <= 5 && Math.abs(y - downImageY) <= 5) {
                             imageView.setBackgroundResource(R.drawable.border_shape_blue);
@@ -555,17 +642,19 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     if (x < 0) {
                         x = 0;
                         imageView.setX(x);
-                    } else if (x > (mDisplayMetrics.widthPixels - 312 - 100)) {
-                        x = mDisplayMetrics.widthPixels - 100 - 312;
-                        imageView.setX(x);
+                    } else if (x > (mDisplayMetrics.widthPixels - 312 - imageView.getWidth())) {
+                        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) imageView.getLayoutParams();
+                        params.width =(int)(mDisplayMetrics.widthPixels - 312 -x);
+                        imageView.requestLayout();
                     }
 
                     if (y <= 0) {
                         y = 0;
                         imageView.setY(y);
-                    } else if (y > mDisplayMetrics.heightPixels - 100 - mStatusBarHeight - 107) {
-                        y = mDisplayMetrics.heightPixels - 100 - mStatusBarHeight - 107;
-                        imageView.setY(y);
+                    } else if (y > mDisplayMetrics.heightPixels - imageView.getHeight() - mStatusBarHeight - 107) {
+                        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) imageView.getLayoutParams();
+                        params.height = (int) (mDisplayMetrics.heightPixels - mStatusBarHeight - 107 - y);
+                        imageView.requestLayout();
                     }
 
                     if (Math.abs(mStartX - x) >= 3 || Math.abs(mStartY - y) >= 3) {
@@ -603,7 +692,112 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
     }
 
+    private class BezierTouchListener implements View.OnTouchListener {
+        private BezierCurve b;
 
+        BezierTouchListener(BezierCurve bezierCurve) {
+            this.b=bezierCurve;
+        }
+
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+            float x=event.getX();
+            float y=event.getY();
+            int action=event.getAction();
+//            if ((x>b.control.x-40 &&x<b.control.x+40
+//                    && y>b.control.y-40 && y<b.control.y+40)
+//                    ||(x>b.start.x-40 && x<b.start.x+40
+//                    && y>b.start.y-40 && y<b.start.y+40)
+//                    ||(x>b.end.x-40 && x<b.end.x+40
+//                    && y>b.end.y-40 && y<b.end.y+40)) {
+                switch (action) {
+                    case MotionEvent.ACTION_DOWN:
+                        downX = event.getX();
+                        downY = event.getY();
+                        downTime = System.currentTimeMillis();
+                        if (x > b.start.x - 60 && x < b.start.x + 60
+                                && y > b.start.y - 60 && y < b.start.y + 60) {
+                            b.setFocusPoint("start");
+                            b.invalidate();
+                        } else if (x > b.end.x - 60 && x < b.end.x + 60
+                                && y > b.end.y - 60 && y < b.end.y + 60) {
+                            b.setFocusPoint("end");
+                            b.invalidate();
+                        } else if (x > b.control.x - 60 && x < b.control.x + 60
+                                && y > b.control.y - 60 && y < b.control.y + 60){
+                            b.setFocusPoint("control");
+                            b.invalidate();
+                        }
+                        else
+                            return false;
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                        long time = System.currentTimeMillis() - downTime;
+                        if (time <= 200) {
+                            if (mAdjustCurveList.contains(b)) {
+                                mFocusCurveList.clear();
+                                mFocusCurveList.add(b);
+                                mAdjustCurveList.clear();
+                                b.status = "resize";
+                                b.invalidate();
+                                Toast.makeText(MainActivity.this, "resize mode", Toast.LENGTH_SHORT).show();
+                            } else {
+                                mAdjustCurveList.clear();
+                                mAdjustCurveList.add(b);
+                                mFocusCurveList.clear();
+                                b.status = "replace";
+                                b.invalidate();
+                                Toast.makeText(MainActivity.this, "replace mode", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                        if (x < 0) {
+                            x = 0;
+                            b.focusPoint.x=x;
+                            b.invalidate();
+                        } else if (x > (mDisplayMetrics.widthPixels - 312 )) {
+                            x = mDisplayMetrics.widthPixels - 312;
+                            b.focusPoint.x=x;
+                            b.invalidate();
+                        }
+
+                        if (y <= 0) {
+                            y = 0;
+                            b.focusPoint.y=y;
+                            b.invalidate();
+                        } else if (y > mDisplayMetrics.heightPixels - mStatusBarHeight - 107) {
+                            y = mDisplayMetrics.heightPixels - mStatusBarHeight - 107;
+                            b.focusPoint.y=y;
+                            b.invalidate();
+                        }
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+
+                        float x1 = event.getX();
+                        float y1 = event.getY();
+                        float disX = x1 - downX;
+                        float disY = y1 - downY;
+                        if (mFocusCurveList.contains(b)) {
+                            b.focusPoint.x = b.focusPoint.x + disX;
+                            b.focusPoint.y = b.focusPoint.y + disY;
+                            b.invalidate();
+                            downX = x1;
+                            downY = y1;
+                        } else if (mAdjustCurveList.contains(b)) {
+                            b.start.x = b.start.x + disX;
+                            b.start.y = b.start.y + disY;
+                            b.end.x = b.end.x + disX;
+                            b.end.y = b.end.y + disY;
+                            b.control.x = b.control.x + disX;
+                            b.control.y = b.control.y + disY;
+                            b.invalidate();
+                            downX=x1;
+                            downY=y1;
+                        }
+                        return true;
+                }
+                return true;
+        }
+    }
 
 
     public Bitmap captureScreen() {
@@ -701,11 +895,11 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                             case MotionEvent.ACTION_DOWN:
                                 mContentDownX = event.getX();
                                 mContentDownY = event.getY();
-                                for (View view : mViewList) {
+                                for (View view : mSquareList) {
                                     view.setOnTouchListener(null);
                                     view.setBackgroundResource(R.drawable.border_shape);
                                 }
-                                mFocusViewList.clear();
+                                mFocusSquareList.clear();
                                 mMoved = true;
                                 return true;
                             case MotionEvent.ACTION_MOVE:
@@ -743,14 +937,17 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     }
                 });
 
-                for (View view : mViewList) {
+                for (View view : mSquareList) {
                     view.setOnTouchListener(null);
                 }
+                refreshSquareViews();
+
+                foregroundView.setOnTouchListener(null);
 
                 Toast.makeText(MainActivity.this, "listener enabled!", Toast.LENGTH_SHORT).show();
             } else {
                 mContent.setOnTouchListener(null);
-                for (View view : mViewList) {
+                for (View view : mSquareList) {
                     view.setOnTouchListener(new SquareTouchListener((ImageView) view));
                 }
                 Toast.makeText(MainActivity.this, "listener disabled!", Toast.LENGTH_SHORT).show();
@@ -766,8 +963,13 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             mContent.setScaleX(1f);
             mContent.setScaleY(1f);
             mCurrentScale = 1f;
+            refreshSquareViews();
             foregroundView.setOnTouchListener(null);
-            for (View view:mViewList){
+            foregroundView.setVisibility(View.VISIBLE);
+            for (View view:mSquareList){
+                view.setVisibility(View.VISIBLE);
+            }
+            for (View view:mCurveList){
                 view.setVisibility(View.VISIBLE);
             }
         }
@@ -845,6 +1047,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     paint.setStrokeCap(Paint.Cap.ROUND);
                     foregroundView.setImageBitmap(mFreespace);
                     foregroundView.setAlpha(40);
+                    cList.clear();
                     layoutViews();
                     break;
 
@@ -904,7 +1107,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 String[] parts = selectedFilePath.split("/");
                 final String fileName = parts[parts.length - 1];
                 try {
-                    URL url = new URL("http://67.216.209.114/UploadToServer.php");
+                    URL url = new URL("http://139.196.85.93/UploadToServer.php");
                     connection = (HttpURLConnection) url.openConnection();
                     connection.setDoInput(true);//Allow Inputs
                     connection.setDoOutput(true);//Allow Outputs
@@ -985,7 +1188,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 mTempBitmap = Bitmap.createScaledBitmap(mFreespace, realImageWidth, realImageHeight, true);
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 mTempBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-                mTempBitmap.recycle();
                 String lineEnd = "\r\n";
                 String twoHyphens = "--";
                 String boundary = "*****";
@@ -995,7 +1197,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 String[] parts = selectedFilePath.split("/");
                 final String fileName = parts[parts.length - 1];
                 try {
-                    URL url = new URL("http://67.216.209.114/UploadToServer.php");
+                    URL url = new URL("http://139.196.85.93/UploadToServer.php");
                     connection = (HttpURLConnection) url.openConnection();
                     connection.setDoInput(true);//Allow Inputs
                     connection.setDoOutput(true);//Allow Outputs

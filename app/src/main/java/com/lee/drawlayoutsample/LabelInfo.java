@@ -10,6 +10,8 @@ public class LabelInfo {
 
         private int numofSquare;
         private List<Square> square;
+
+        private List<Curve> curve;
         public void setNumofSquare(int numofSquare) {
             this.numofSquare = numofSquare;
         }
@@ -22,6 +24,13 @@ public class LabelInfo {
         }
         public List<Square> getSquare() {
             return square;
+        }
+
+        public void setCurve(List<Curve> curve) {
+            this.curve = curve;
+        }
+        public List<Curve> getCurve() {
+            return curve;
         }
 
 }
