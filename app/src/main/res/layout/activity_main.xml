@@ -2,9 +2,9 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
-             android:layout_width="match_parent"
-             android:layout_height="match_parent"
-             android:background="#ffffff">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#ffffff">
     <FrameLayout
         android:id="@+id/content"
         android:layout_width="match_parent"
@@ -19,17 +19,23 @@
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
             android:scaleType="fitXY"/>
+
         <ImageView
             android:id="@+id/foregroundView"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
-            android:scaleType="fitXY"/>
+            android:scaleType="fitXY" />
 
     </FrameLayout>
     <!--<com.dongwen.cn.electricity.view.DrawCanvasView-->
     <!--android:id="@+id/canvas_view" android:layout_width="match_parent"-->
     <!--android:layout_height="match_parent">-->
     <!--</com.dongwen.cn.electricity.view.DrawCanvasView>-->
+
+    <include
+        android:id="@+id/draw_navigation_bar"
+        layout="@layout/draw_navigation_bar_layout" />
+
     <RelativeLayout
         android:layout_width="wrap_content"
         android:layout_height="107px"
@@ -42,21 +48,22 @@
             android:id="@+id/linearlayout"
             android:layout_width="wrap_content"
             android:layout_height="107px"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
-            android:layout_marginRight="80dp"
-            android:orientation="horizontal"
-            >
+            android:orientation="horizontal">
+
             <Button
                 android:id="@+id/button"
                 android:layout_width="40dp"
                 android:layout_height="wrap_content"
                 android:layout_alignParentLeft="true"
+                android:layout_alignParentTop="true"
                 android:layout_marginLeft="20dp"
                 android:layout_marginStart="20dp"
                 android:background="#e4a726"
                 android:text="L"
-                android:textColor="#ffffff"
-                android:layout_alignParentTop="true" />
+                android:textColor="#ffffff" />
 
             <Button
                 android:id="@+id/button4"
@@ -98,11 +105,29 @@
                 android:textColor="#ffffff" />
 
 
-            <View
-                android:layout_width="1dp"
-                android:layout_height="match_parent"
-                android:background="#000" />
+            <TextView
+                android:id="@+id/textOne"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="20dp"
+                android:layout_marginStart="20dp"
+                android:layout_toEndOf="@+id/curve_only"
+                android:layout_toRightOf="@+id/curve_only"
+                android:text="MODE:"
+                android:textColor="#EA5246"
+                android:textStyle="bold|italic" />
 
+            <TextView
+                android:id="@+id/modeText"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="5dp"
+                android:layout_marginStart="5dp"
+                android:layout_toEndOf="@+id/textOne"
+                android:layout_toRightOf="@+id/textOne"
+                android:textColor="#EA5246"
+                android:textSize="18sp"
+                android:textStyle="bold|italic" />
 
 
         </LinearLayout>
@@ -115,8 +140,4 @@
 
 
     </RelativeLayout>
-
-    <include
-        android:id="@+id/draw_navigation_bar"
-        layout="@layout/draw_navigation_bar_layout" />
 </FrameLayout>

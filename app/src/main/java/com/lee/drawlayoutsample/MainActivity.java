@@ -39,6 +39,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.RadioGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
@@ -77,11 +78,17 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private Set<View> mFocusCurveList = new HashSet<View>();
     private Set<View> mAdjustCurveList = new HashSet<View>();
     private List<Curve> cList=new ArrayList<Curve>();
+    private DrawPath dp;
+    private static List<DrawPath> savePath= new ArrayList<DrawPath>();
     private long downTime = 0;
     private float downX = 0f;
     private float downY = 0f;
     private float downImageX = 0f;
     private float downImageY = 0f;
+    private class DrawPath {
+        public Path path;// 路径
+        public Paint paint;// 画笔
+    }
 
 
     private int imageW = 0;
@@ -118,6 +125,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private Paint paint;
     private Path path;
     private String jsonString;
+    private TextView modeText;
 
     private int parseType;
     public static final int PARSE_URLINFO=0;
@@ -168,6 +176,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
         Button resetListener = findViewById(R.id.button4);
         resetListener.setOnClickListener(mResetListener);
+        modeText=(TextView)findViewById(R.id.modeText);
+
 
 
         findViewById(R.id.delete).setOnClickListener(this);
@@ -300,11 +310,12 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 break;
             case R.id.paint:
                 foregroundView.setOnTouchListener(new FreespaceTouchListener(foregroundView));
-                paint.setColor(Color.rgb(2,192,1));
+                paint.setColor(Color.rgb(0,200,0));
                 for (View view:mSquareList){
                     view.setVisibility(View.GONE);
                 }
-                Toast.makeText(v.getContext(),"Paint enabled",Toast.LENGTH_SHORT).show();
+                //Toast.makeText(v.getContext(),"Paint enabled",Toast.LENGTH_SHORT).show();
+                modeText.setText("Paint");
                 break;
             case R.id.erase:
                 foregroundView.setOnTouchListener(new FreespaceTouchListener(foregroundView));
@@ -313,7 +324,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 for (View view:mSquareList){
                     view.setVisibility(View.GONE);
                 }
-                Toast.makeText(v.getContext(),"Erasor enabled",Toast.LENGTH_SHORT).show();
+                //Toast.makeText(v.getContext(),"Erasor enabled",Toast.LENGTH_SHORT).show();
+                modeText.setText("erasor");
                 break;
             case R.id.delete:
                 if (mFocusCurveList.contains(mCurrentFocusView)
@@ -624,13 +636,16 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                             mFocusSquareList.add(imageView);
                             mAdjustSquareList.clear();
                             imageView.setBackgroundResource(R.drawable.border_shape_green);
-                            Toast.makeText(MainActivity.this, "resize mode", Toast.LENGTH_SHORT).show();
+                            //Toast.makeText(MainActivity.this, "resize mode", Toast.LENGTH_SHORT).show();
+                            modeText.setText("resize");
+
                         } else {
                             mAdjustSquareList.clear();
                             mAdjustSquareList.add(imageView);
                             mFocusSquareList.clear();
                             imageView.setBackgroundResource(R.drawable.border_shape_blue);
-                            Toast.makeText(MainActivity.this, "replace mode", Toast.LENGTH_SHORT).show();
+                            //Toast.makeText(MainActivity.this, "replace mode", Toast.LENGTH_SHORT).show();
+                            modeText.setText("replace");
                         }
 
                         refreshSquareViews();
@@ -710,93 +725,95 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 //                    && y>b.start.y-40 && y<b.start.y+40)
 //                    ||(x>b.end.x-40 && x<b.end.x+40
 //                    && y>b.end.y-40 && y<b.end.y+40)) {
-                switch (action) {
-                    case MotionEvent.ACTION_DOWN:
-                        downX = event.getX();
-                        downY = event.getY();
-                        downTime = System.currentTimeMillis();
-                        if (x > b.start.x - 60 && x < b.start.x + 60
-                                && y > b.start.y - 60 && y < b.start.y + 60) {
-                            b.setFocusPoint("start");
+            switch (action) {
+                case MotionEvent.ACTION_DOWN:
+                    downX = event.getX();
+                    downY = event.getY();
+                    downTime = System.currentTimeMillis();
+                    if (x > b.start.x - 60 && x < b.start.x + 60
+                            && y > b.start.y - 60 && y < b.start.y + 60) {
+                        b.setFocusPoint("start");
+                        b.invalidate();
+                    } else if (x > b.end.x - 60 && x < b.end.x + 60
+                            && y > b.end.y - 60 && y < b.end.y + 60) {
+                        b.setFocusPoint("end");
+                        b.invalidate();
+                    } else if (x > b.control.x - 60 && x < b.control.x + 60
+                            && y > b.control.y - 60 && y < b.control.y + 60){
+                        b.setFocusPoint("control");
+                        b.invalidate();
+                    }
+                    else
+                        return false;
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    long time = System.currentTimeMillis() - downTime;
+                    if (time <= 200) {
+                        mCurrentFocusView=b;
+                        if (mAdjustCurveList.contains(b)) {
+                            mFocusCurveList.clear();
+                            mFocusCurveList.add(b);
+                            mAdjustCurveList.clear();
+                            b.status = "resize";
                             b.invalidate();
-                        } else if (x > b.end.x - 60 && x < b.end.x + 60
-                                && y > b.end.y - 60 && y < b.end.y + 60) {
-                            b.setFocusPoint("end");
+                            //Toast.makeText(MainActivity.this, "resize mode", Toast.LENGTH_SHORT).show();
+                            modeText.setText("resize");
+                        } else {
+                            mAdjustCurveList.clear();
+                            mAdjustCurveList.add(b);
+                            mFocusCurveList.clear();
+                            b.status = "replace";
                             b.invalidate();
-                        } else if (x > b.control.x - 60 && x < b.control.x + 60
-                                && y > b.control.y - 60 && y < b.control.y + 60){
-                            b.setFocusPoint("control");
-                            b.invalidate();
+                            //Toast.makeText(MainActivity.this, "replace mode", Toast.LENGTH_SHORT).show();
+                            modeText.setText("replace");
                         }
-                        else
-                            return false;
-                        return true;
-                    case MotionEvent.ACTION_UP:
-                        long time = System.currentTimeMillis() - downTime;
-                        if (time <= 200) {
-                            mCurrentFocusView=b;
-                            if (mAdjustCurveList.contains(b)) {
-                                mFocusCurveList.clear();
-                                mFocusCurveList.add(b);
-                                mAdjustCurveList.clear();
-                                b.status = "resize";
-                                b.invalidate();
-                                Toast.makeText(MainActivity.this, "resize mode", Toast.LENGTH_SHORT).show();
-                            } else {
-                                mAdjustCurveList.clear();
-                                mAdjustCurveList.add(b);
-                                mFocusCurveList.clear();
-                                b.status = "replace";
-                                b.invalidate();
-                                Toast.makeText(MainActivity.this, "replace mode", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                        if (x < 0) {
-                            x = 0;
-                            b.focusPoint.x=x;
-                            b.invalidate();
-                        } else if (x > (mDisplayMetrics.widthPixels - 312 )) {
-                            x = mDisplayMetrics.widthPixels - 312;
-                            b.focusPoint.x=x;
-                            b.invalidate();
-                        }
+                    }
+                    if (x < 0) {
+                        x = 0;
+                        b.focusPoint.x=x;
+                        b.invalidate();
+                    } else if (x > (mDisplayMetrics.widthPixels - 312 )) {
+                        x = mDisplayMetrics.widthPixels - 312;
+                        b.focusPoint.x=x;
+                        b.invalidate();
+                    }
 
-                        if (y <= 0) {
-                            y = 0;
-                            b.focusPoint.y=y;
-                            b.invalidate();
-                        } else if (y > mDisplayMetrics.heightPixels - mStatusBarHeight - 107) {
-                            y = mDisplayMetrics.heightPixels - mStatusBarHeight - 107;
-                            b.focusPoint.y=y;
-                            b.invalidate();
-                        }
-                        return true;
-                    case MotionEvent.ACTION_MOVE:
+                    if (y <= 0) {
+                        y = 0;
+                        b.focusPoint.y=y;
+                        b.invalidate();
+                    } else if (y > mDisplayMetrics.heightPixels - mStatusBarHeight - 107) {
+                        y = mDisplayMetrics.heightPixels - mStatusBarHeight - 107;
+                        b.focusPoint.y=y;
+                        b.invalidate();
+                    }
+                    return true;
+                case MotionEvent.ACTION_MOVE:
 
-                        float x1 = event.getX();
-                        float y1 = event.getY();
-                        float disX = x1 - downX;
-                        float disY = y1 - downY;
-                        if (mFocusCurveList.contains(b)) {
-                            b.focusPoint.x = b.focusPoint.x + disX;
-                            b.focusPoint.y = b.focusPoint.y + disY;
-                            b.invalidate();
-                            downX = x1;
-                            downY = y1;
-                        } else if (mAdjustCurveList.contains(b)) {
-                            b.start.x = b.start.x + disX;
-                            b.start.y = b.start.y + disY;
-                            b.end.x = b.end.x + disX;
-                            b.end.y = b.end.y + disY;
-                            b.control.x = b.control.x + disX;
-                            b.control.y = b.control.y + disY;
-                            b.invalidate();
-                            downX=x1;
-                            downY=y1;
-                        }
-                        return true;
-                }
-                return true;
+                    float x1 = event.getX();
+                    float y1 = event.getY();
+                    float disX = x1 - downX;
+                    float disY = y1 - downY;
+                    if (mFocusCurveList.contains(b)) {
+                        b.focusPoint.x = b.focusPoint.x + disX;
+                        b.focusPoint.y = b.focusPoint.y + disY;
+                        b.invalidate();
+                        downX = x1;
+                        downY = y1;
+                    } else if (mAdjustCurveList.contains(b)) {
+                        b.start.x = b.start.x + disX;
+                        b.start.y = b.start.y + disY;
+                        b.end.x = b.end.x + disX;
+                        b.end.y = b.end.y + disY;
+                        b.control.x = b.control.x + disX;
+                        b.control.y = b.control.y + disY;
+                        b.invalidate();
+                        downX=x1;
+                        downY=y1;
+                    }
+                    return true;
+            }
+            return true;
         }
     }
 
@@ -898,7 +915,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                                 mContentDownY = event.getY();
                                 for (View view : mSquareList) {
                                     view.setOnTouchListener(null);
-                                    view.setBackgroundResource(R.drawable.border_shape);
                                 }
                                 mFocusSquareList.clear();
                                 mMoved = true;
@@ -942,16 +958,18 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     view.setOnTouchListener(null);
                 }
                 refreshSquareViews();
-
                 foregroundView.setOnTouchListener(null);
+                //Toast.makeText(MainActivity.this, "listener enabled!", Toast.LENGTH_SHORT).show();
+                modeText.setText("listener enabled");
 
-                Toast.makeText(MainActivity.this, "listener enabled!", Toast.LENGTH_SHORT).show();
+
             } else {
                 mContent.setOnTouchListener(null);
                 for (View view : mSquareList) {
                     view.setOnTouchListener(new SquareTouchListener((ImageView) view));
                 }
-                Toast.makeText(MainActivity.this, "listener disabled!", Toast.LENGTH_SHORT).show();
+                //Toast.makeText(MainActivity.this, "listener disabled!", Toast.LENGTH_SHORT).show();
+                modeText.setText("listener disabled");
             }
             canvasZoomEnabled = (!canvasZoomEnabled);
         }
@@ -1040,7 +1058,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     canvas=new Canvas(mFreespace);
                     path = new Path();
                     paint = new Paint();
-                    paint.setColor(Color.rgb(2,192,1));
+                    paint.setColor(Color.rgb(0,200,0));
                     //paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
                     paint.setStyle(Paint.Style.STROKE);
                     paint.setStrokeWidth(50);
