@@ -33,9 +33,9 @@ public class BezierCurve extends View {
         mPaint.setStyle(Paint.Style.STROKE);
         mPaint.setTextSize(60);
 
-        start = new PointF(200,200);
-        end = new PointF(600,800);
-        control = new PointF(200,400);
+        start = new PointF(2000,1000);
+        end = new PointF(800,800);
+        control = new PointF(1400,900);
         focusPoint=control;
     }
 

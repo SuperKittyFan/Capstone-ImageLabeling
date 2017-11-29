@@ -73,6 +73,24 @@
                     android:scaleType="fitXY"
                     android:src="@drawable/actionbar_ic_delete" />
             </RelativeLayout>
+            <RelativeLayout
+
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1">
+                <ImageView
+                    android:id="@+id/rider"
+                    android:layout_width="100px"
+                    android:layout_height="100px"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginLeft="20px"
+                    android:layout_centerInParent="true"
+                    android:background="@drawable/draw_selector_bg"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/rider" />
+            </RelativeLayout>
 
         </LinearLayout>
 

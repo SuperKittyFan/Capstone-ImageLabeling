@@ -119,7 +119,9 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private float mStartY;
     private static final int STROKE_WIDTH = 5;
     private URLInfo urlInfo=new URLInfo();
-    private LabelInfo labelInfo = new LabelInfo();
+    private SquareInfo squareInfo = new SquareInfo();
+    private CurveInfo curveInfo = new CurveInfo();
+
     private URL url;
     private Canvas canvas;
     private Paint paint;
@@ -188,7 +190,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         findViewById(R.id.erase).setOnClickListener(this);
         findViewById(R.id.lineIcon).setOnClickListener(this);
         findViewById(R.id.curve_only).setOnClickListener(this);
-        labelInfo.setCurve(cList);
+        findViewById(R.id.rider).setOnClickListener(mSquareBarClickListener);
         mSquareList.clear();
         mCurveList.clear();
         parseType=PARSE_URLINFO;
@@ -200,8 +202,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
         mSquareList.clear();
         mCurveList.clear();
-        if (labelInfo.getSquare()!=null){
-            for (Square square: labelInfo.getSquare()){
+        if (squareInfo.getSquare()!=null){
+            for (Square square: squareInfo.getSquare()){
                 float xmax=square.getXmax();
                 float xmin=square.getXmin();
                 float ymax=square.getYmax();
@@ -244,8 +246,11 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 if (square.getTypeofSquare().equals("person")){
                     v.setBackgroundResource(R.drawable.border_shape_red);
                 }
-                else{
+                else if (square.getTypeofSquare().equals("car")){
                     v.setBackgroundResource(R.drawable.border_shape_yellow);
+                }
+                else {
+                    v.setBackgroundResource(R.drawable.border_shape_purple);
                 }
             }
         }
@@ -295,9 +300,14 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             case R.id.lineIcon:
                 final BezierCurve bezierCurve = new BezierCurve(mContent.getContext());
                 Curve curve = new Curve();
-                if (labelInfo.getCurve()==null)
-                    labelInfo.setCurve(cList);
-                labelInfo.getCurve().add(curve);
+                bezierCurve.start.x=mDisplayMetrics.widthPixels - 312;
+                bezierCurve.start.y=mDisplayMetrics.heightPixels-mStatusBarHeight-107;
+                bezierCurve.control.x=(bezierCurve.start.x+bezierCurve.end.x)/2;
+                bezierCurve.control.y=(bezierCurve.start.y+bezierCurve.end.y)/2;
+                bezierCurve.invalidate();
+                if (curveInfo.getCurve()==null)
+                    curveInfo.setCurve(cList);
+                curveInfo.getCurve().add(curve);
                 bezierCurve.setTag(curve);
                 int[] location = new int[2];
                 mContent.addView(bezierCurve);
@@ -307,11 +317,15 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 mAdjustCurveList.add(bezierCurve);
                 mCurrentFocusView=bezierCurve;
                 bezierCurve.setOnTouchListener(new BezierTouchListener(bezierCurve));
+                foregroundView.setOnTouchListener(null);
                 break;
             case R.id.paint:
                 foregroundView.setOnTouchListener(new FreespaceTouchListener(foregroundView));
                 paint.setColor(Color.rgb(0,200,0));
                 for (View view:mSquareList){
+                    view.setVisibility(View.GONE);
+                }
+                for (View view:mCurveList){
                     view.setVisibility(View.GONE);
                 }
                 //Toast.makeText(v.getContext(),"Paint enabled",Toast.LENGTH_SHORT).show();
@@ -322,6 +336,9 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 paint.setColor(Color.BLACK);
 
                 for (View view:mSquareList){
+                    view.setVisibility(View.GONE);
+                }
+                for (View view:mCurveList){
                     view.setVisibility(View.GONE);
                 }
                 //Toast.makeText(v.getContext(),"Erasor enabled",Toast.LENGTH_SHORT).show();
@@ -362,6 +379,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
                     int startX= (int) (b.start.x*realImageWidth/imageW);
                     int startY= (int) (b.start.y*realImageHeight/imageH);
+
                     int endX= (int) (b.end.x*realImageWidth/imageW);
                     int endY= (int) (b.end.y*realImageHeight/imageH);
                     int controlX= (int) (b.control.x*realImageWidth/imageW);
@@ -404,7 +422,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private void removeViews(View view) {
         mContent.removeView(view);
         mSquareList.remove(view);
-        labelInfo.getSquare().remove(view.getTag());
+        squareInfo.getSquare().remove(view.getTag());
         mFocusSquareList.remove(view);
         mAdjustSquareList.remove(view);
 
@@ -413,7 +431,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private void removeCurveViews(View view){
         mContent.removeView(view);
         mCurveList.remove(view);
-        labelInfo.getCurve().remove(view.getTag());
+        curveInfo.getCurve().remove(view.getTag());
         mFocusCurveList.remove(view);
         mAdjustCurveList.remove(view);
     }
@@ -507,7 +525,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         public void onClick(View v) {
             final ImageView imageView = new ImageView(MainActivity.this);
             Square square = new Square();
-            labelInfo.getSquare().add(square);
+            squareInfo.getSquare().add(square);
             switch (v.getId()) {
                 case R.id.rectIconCar:
                     square.setTypeofSquare("car");
@@ -515,6 +533,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 case R.id.rectIconPerson:
                     square.setTypeofSquare("person");
                     break;
+                case R.id.rider:
+                    square.setTypeofSquare("rider");
                 default:
                     break;
             }
@@ -672,9 +692,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                         imageView.requestLayout();
                     }
 
-                    if (Math.abs(mStartX - x) >= 3 || Math.abs(mStartY - y) >= 3) {
-                        //createMemento(imageView, false, false);
-                    }
 
                     return true;
             }
@@ -699,6 +716,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 case MotionEvent.ACTION_MOVE:
                     path.lineTo(event.getX(), event.getY());
                     break;
+                case MotionEvent.ACTION_UP:
+
             }
             canvas.drawPath(path, paint);
             foregroundView.setImageBitmap(mFreespace);
@@ -755,7 +774,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                             mFocusCurveList.add(b);
                             mAdjustCurveList.clear();
                             b.status = "resize";
-                            b.invalidate();
                             //Toast.makeText(MainActivity.this, "resize mode", Toast.LENGTH_SHORT).show();
                             modeText.setText("resize");
                         } else {
@@ -763,7 +781,6 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                             mAdjustCurveList.add(b);
                             mFocusCurveList.clear();
                             b.status = "replace";
-                            b.invalidate();
                             //Toast.makeText(MainActivity.this, "replace mode", Toast.LENGTH_SHORT).show();
                             modeText.setText("replace");
                         }
@@ -771,22 +788,21 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     if (x < 0) {
                         x = 0;
                         b.focusPoint.x=x;
-                        b.invalidate();
                     } else if (x > (mDisplayMetrics.widthPixels - 312 )) {
                         x = mDisplayMetrics.widthPixels - 312;
                         b.focusPoint.x=x;
-                        b.invalidate();
                     }
+
+
 
                     if (y <= 0) {
                         y = 0;
                         b.focusPoint.y=y;
-                        b.invalidate();
                     } else if (y > mDisplayMetrics.heightPixels - mStatusBarHeight - 107) {
                         y = mDisplayMetrics.heightPixels - mStatusBarHeight - 107;
                         b.focusPoint.y=y;
-                        b.invalidate();
                     }
+                    b.invalidate();
                     return true;
                 case MotionEvent.ACTION_MOVE:
 
@@ -797,7 +813,33 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     if (mFocusCurveList.contains(b)) {
                         b.focusPoint.x = b.focusPoint.x + disX;
                         b.focusPoint.y = b.focusPoint.y + disY;
-                        b.invalidate();
+                        if (b.focusPoint!=b.control){
+                            b.control.x=(b.start.x+b.end.x)/2;
+                            b.control.y=(b.start.y+b.end.y)/2;
+                        }
+                        if (b.focusPoint==b.start){
+                            float right=Math.abs(b.start.x-mDisplayMetrics.widthPixels+312);
+                            float bottom= Math.abs(b.start.y-mDisplayMetrics.heightPixels+107+mStatusBarHeight);
+                            float left = Math.abs(b.start.x);
+                            if (right<=bottom && right<=left
+                                    ){
+                                b.start.x=mDisplayMetrics.widthPixels-312;
+                            }
+                            else if (bottom<=left && bottom <=right){
+                                b.start.y=mDisplayMetrics.heightPixels-107-mStatusBarHeight;
+                            }
+                            else{
+                                b.start.x=0;
+                            }
+                            if (b.start.x>mDisplayMetrics.widthPixels-312)
+                                b.start.x=mDisplayMetrics.widthPixels-312;
+                            if (b.start.x<0)
+                                b.start.x=0;
+                            if (b.start.y> mDisplayMetrics.heightPixels-107-mStatusBarHeight)
+                                b.start.y=mDisplayMetrics.heightPixels-107-mStatusBarHeight;
+                            b.control.x=(b.start.x+b.end.x)/2;
+                            b.control.y=(b.start.y+b.end.y)/2;
+                        }
                         downX = x1;
                         downY = y1;
                     } else if (mAdjustCurveList.contains(b)) {
@@ -807,10 +849,37 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                         b.end.y = b.end.y + disY;
                         b.control.x = b.control.x + disX;
                         b.control.y = b.control.y + disY;
-                        b.invalidate();
+                        if (b.focusPoint!=b.control){
+                            b.control.x=(b.start.x+b.end.x)/2;
+                            b.control.y=(b.start.y+b.end.y)/2;
+                        }
+                        //absorption
+                        float right=Math.abs(b.start.x-mDisplayMetrics.widthPixels+312);
+                        float bottom= Math.abs(b.start.y-mDisplayMetrics.heightPixels+107+mStatusBarHeight);
+                        float left = Math.abs(b.start.x);
+                        if (right<=bottom && right<=left
+                                ){
+                            b.start.x=mDisplayMetrics.widthPixels-312;
+                        }
+                        else if (bottom<=left && bottom <= right){
+                            b.start.y=mDisplayMetrics.heightPixels-107-mStatusBarHeight;
+                        }
+                        else{
+                            b.start.x=0;
+                        }
+                        if (b.start.x>mDisplayMetrics.widthPixels-312)
+                            b.start.x=mDisplayMetrics.widthPixels-312;
+                        if (b.start.x<0)
+                            b.start.x=0;
+                        if (b.start.y> mDisplayMetrics.heightPixels-107-mStatusBarHeight)
+                            b.start.y=mDisplayMetrics.heightPixels-107-mStatusBarHeight;
+//
+//                        b.control.x=(b.start.x+b.end.x)/2;
+//                        b.control.y=(b.start.y+b.end.y)/2;
                         downX=x1;
                         downY=y1;
                     }
+                    b.invalidate();
                     return true;
             }
             return true;
@@ -877,8 +946,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             float dSpan = detector.getCurrentSpan() - detector.getPreviousSpan();
             float dScale = (dSpan * 0.1f) / 100f;
             float scale = mCurrentScale + dScale;
-            if (scale > 4.0f) {
-                scale = 4.0f;
+            if (scale > 10.0f) {
+                scale = 10.0f;
             } else if (scale < 0.5f) {
                 scale = 0.5f;
             }
@@ -1048,13 +1117,14 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     parseType=LOAD_IMAGE;
                     loadImageFromNetwork();
                     response=(String)msg.obj;
-                    labelInfo= gson.fromJson(response, LabelInfo.class);
+                    squareInfo= gson.fromJson(response, SquareInfo.class);
+                    cList.clear();
+                    curveInfo.setCurve(cList);
                     break;
                 case LOAD_IMAGE:
                     imageH=foregroundView.getHeight();
                     imageW=foregroundView.getWidth();
                     mFreespace = Bitmap.createScaledBitmap(mTempBitmap, imageW, imageH, true);
-                    mTempBitmap.recycle();
                     canvas=new Canvas(mFreespace);
                     path = new Path();
                     paint = new Paint();
@@ -1116,7 +1186,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 HttpURLConnection connection;
                 DataOutputStream dataOutputStream;
                 Gson gson=new Gson();
-                jsonString=gson.toJson(labelInfo);
+                jsonString=gson.toJson(squareInfo);
                 String lineEnd = "\r\n";
                 String twoHyphens = "--";
                 String boundary = "*****";
@@ -1141,7 +1211,77 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     //writing bytes to data outputstream
                     dataOutputStream.writeBytes(twoHyphens + boundary + lineEnd);
                     dataOutputStream.writeBytes("Content-Disposition: form-data; name=\"uploaded_file\";filename=\""
-                            + fileName+ "\"" + lineEnd);
+                            + "car_ped-"+ fileName+"\"" + lineEnd);
+                    dataOutputStream.writeBytes(lineEnd);
+                    dataOutputStream.writeBytes(jsonString);
+                    bufferSize = maxBufferSize;
+                    //setting the buffer as byte array of size of bufferSize
+                    buffer = new byte[bufferSize];
+
+                    dataOutputStream.writeBytes(lineEnd);
+                    dataOutputStream.writeBytes(twoHyphens + boundary + twoHyphens + lineEnd);
+
+                    serverResponseCode = connection.getResponseCode();
+                    String serverResponseMessage = connection.getResponseMessage();
+
+                    Log.i(TAG, "Server Response is: " + serverResponseMessage + ": " + serverResponseCode);
+
+                    //response code of 200 indicates the server status OK
+                    if (serverResponseCode == 200) {
+                        BufferedReader in = new BufferedReader(
+                                new InputStreamReader(connection.getInputStream(),
+                                        "UTF-8"));
+
+                        String retData = null;
+
+                        String responseData = "";
+
+                        while ((retData = in.readLine()) != null)
+
+                        {
+
+                            responseData += retData;
+
+                        }
+
+                        in.close();
+                        System.out.println(responseData);
+                        //Toast.makeText(MainActivity.this, responseData+jsonString, Toast.LENGTH_SHORT).show();
+
+                    }
+
+                    dataOutputStream.flush();
+                    dataOutputStream.close();
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                    Toast.makeText(MainActivity.this, "URL error!", Toast.LENGTH_SHORT).show();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Toast.makeText(MainActivity.this, "Cannot Read/Write File!", Toast.LENGTH_SHORT).show();
+                }
+
+                serverResponseCode = 0;
+                gson=new Gson();
+                jsonString="";
+                jsonString=gson.toJson(curveInfo);
+                try {
+                    URL url = new URL("http://139.196.85.93/UploadToServer.php");
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setDoInput(true);//Allow Inputs
+                    connection.setDoOutput(true);//Allow Outputs
+                    connection.setUseCaches(false);//Don't use a cached Copy
+                    connection.setRequestMethod("POST");
+                    connection.setRequestProperty("Connection", "Keep-Alive");
+                    connection.setRequestProperty("ENCTYPE", "multipart/form-data");
+                    connection.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+                    connection.setRequestProperty("uploaded_file", selectedFilePath);
+                    //creating new dataoutputstream
+                    dataOutputStream = new DataOutputStream(connection.getOutputStream());
+                    //writing bytes to data outputstream
+                    dataOutputStream.writeBytes(twoHyphens + boundary + lineEnd);
+                    dataOutputStream.writeBytes("Content-Disposition: form-data; name=\"uploaded_file\";filename=\""
+                            + "lane-"+ fileName+"\"" + lineEnd);
                     dataOutputStream.writeBytes(lineEnd);
                     dataOutputStream.writeBytes(jsonString);
                     bufferSize = maxBufferSize;
@@ -1197,6 +1337,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         return 0;
     }
 
+
     private int uploadImage(final String selectedFilePath){
         new Thread(new Runnable() {
             @Override
@@ -1204,6 +1345,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 int serverResponseCode = 0;
                 HttpURLConnection connection;
                 DataOutputStream dataOutputStream;
+                mTempBitmap.recycle();
                 mTempBitmap = Bitmap.createScaledBitmap(mFreespace, realImageWidth, realImageHeight, true);
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 mTempBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
