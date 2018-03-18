@@ -3,6 +3,7 @@ package com.lee.drawlayoutsample;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -24,6 +25,7 @@ import android.os.Message;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
+import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -38,12 +40,15 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.lee.drawlayoutsample.utils.LogUtils;
+import com.squareup.picasso.MemoryPolicy;
+import com.squareup.picasso.NetworkPolicy;
 import com.squareup.picasso.Picasso;
 
 import java.io.BufferedReader;
@@ -128,11 +133,19 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     private Path path;
     private String jsonString;
     private TextView modeText;
+    private RadioGroup radioGroup;
+    private RadioButton radioButton;
 
     private int parseType;
     public static final int PARSE_URLINFO=0;
     public static final int PARSE_SQUARE=1;
     public static final int LOAD_IMAGE=2;
+    public static float startX=100;
+    public static float startY=100;
+    public static float controlX=100;
+    public static float controlY=100;
+    public static float endX=100;
+    public static float endY=100;
 
 
 
@@ -179,8 +192,12 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         Button resetListener = findViewById(R.id.button4);
         resetListener.setOnClickListener(mResetListener);
         modeText=(TextView)findViewById(R.id.modeText);
-
-
+        startX=mDisplayMetrics.widthPixels - 312-100;
+        startY=mDisplayMetrics.heightPixels-mStatusBarHeight-107;
+        endX=1000;
+        endY=800;
+        controlX=(startX+endX)/2;
+        controlY=(startY+endY)/2;
 
         findViewById(R.id.delete).setOnClickListener(this);
         findViewById(R.id.back).setOnClickListener(this);
@@ -191,6 +208,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
         findViewById(R.id.lineIcon).setOnClickListener(this);
         findViewById(R.id.curve_only).setOnClickListener(this);
         findViewById(R.id.rider).setOnClickListener(mSquareBarClickListener);
+        radioGroup=findViewById(R.id.radioGroup);
+        radioGroup.setOnCheckedChangeListener(this);
         mSquareList.clear();
         mCurveList.clear();
         parseType=PARSE_URLINFO;
@@ -226,8 +245,11 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 if (square.getTypeofSquare().equals("person")){
                     imageView.setBackgroundResource(R.drawable.border_shape_red);
                 }
-                else{
+                else if (square.getTypeofSquare().equals("car")){
                     imageView.setBackgroundResource(R.drawable.border_shape_yellow);
+                }
+                else{
+                    imageView.setBackgroundResource(R.drawable.border_shape_purple);
                 }
                 mSquareList.add(imageView);
                 mAdjustSquareList.clear();
@@ -300,10 +322,12 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             case R.id.lineIcon:
                 final BezierCurve bezierCurve = new BezierCurve(mContent.getContext());
                 Curve curve = new Curve();
-                bezierCurve.start.x=mDisplayMetrics.widthPixels - 312;
-                bezierCurve.start.y=mDisplayMetrics.heightPixels-mStatusBarHeight-107;
-                bezierCurve.control.x=(bezierCurve.start.x+bezierCurve.end.x)/2;
-                bezierCurve.control.y=(bezierCurve.start.y+bezierCurve.end.y)/2;
+                bezierCurve.start.x=startX;
+                bezierCurve.start.y=startY;
+                bezierCurve.control.x=controlX;
+                bezierCurve.control.y=controlY;
+                bezierCurve.end.x=endX;
+                bezierCurve.end.y=endY;
                 bezierCurve.invalidate();
                 if (curveInfo.getCurve()==null)
                     curveInfo.setCurve(cList);
@@ -321,6 +345,10 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 break;
             case R.id.paint:
                 foregroundView.setOnTouchListener(new FreespaceTouchListener(foregroundView));
+                foregroundView.setAlpha(100);
+                paint.setStrokeWidth(50);
+                radioButton=findViewById(R.id.thickness2);
+                radioButton.setChecked(true);
                 paint.setColor(Color.rgb(0,200,0));
                 for (View view:mSquareList){
                     view.setVisibility(View.GONE);
@@ -332,9 +360,12 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 modeText.setText("Paint");
                 break;
             case R.id.erase:
+                foregroundView.setAlpha(100);
                 foregroundView.setOnTouchListener(new FreespaceTouchListener(foregroundView));
                 paint.setColor(Color.BLACK);
-
+                paint.setStrokeWidth(130);
+                radioButton=findViewById(R.id.thickness3);
+                radioButton.setChecked(true);
                 for (View view:mSquareList){
                     view.setVisibility(View.GONE);
                 }
@@ -358,6 +389,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 mContent.requestLayout();
                 break;
             case R.id.send_request:
+                boolean isOk = Dialog.showComfirmDialog(MainActivity.this,"Reminder","Are you sure?");
+                if(!isOk) break;
                 //transform all the labeled data
                 for (View squareView: mSquareList){
                     Square square = (Square) squareView.getTag();
@@ -379,7 +412,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
 
                     int startX= (int) (b.start.x*realImageWidth/imageW);
                     int startY= (int) (b.start.y*realImageHeight/imageH);
-
+                    if (startX>=realImageWidth) startX=realImageWidth-1;
+                    if (startY>=realImageHeight) startY=realImageHeight-1;
                     int endX= (int) (b.end.x*realImageWidth/imageW);
                     int endY= (int) (b.end.y*realImageHeight/imageH);
                     int controlX= (int) (b.control.x*realImageWidth/imageW);
@@ -393,6 +427,14 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     mContent.removeView(b);
                 }
                 //clear the current view list
+
+                startX=mDisplayMetrics.widthPixels - 312-100;
+                startY=mDisplayMetrics.heightPixels-mStatusBarHeight-107;
+                endX=1000;
+                endY=800;
+                controlX=(startX+endX)/2;
+                controlY=(startY+endY)/2;
+
                 mSquareList.clear();
                 mCurveList.clear();
                 mAdjustSquareList.clear();
@@ -563,26 +605,17 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
     @Override
     public void onCheckedChanged(RadioGroup radioGroup, int checkedId) {
 
-//        switch (checkedId) {
-//            case R.id.rb_black:
-//                mCurrentColor = 0;
-//                mLineBitmap = mLineBitmapBlack;
-//
-//                break;
-//            case R.id.rb_green:
-//                mCurrentColor = 1;
-//                mLineBitmap = mLineBitmapGreen;
-//
-//                break;
-//            case R.id.rb_red:
-//                mCurrentColor = 2;
-//                mLineBitmap = mLineBitmapRed;
-//
-//                break;
-//            default:
-//                LogUtils.e("default checkedId: " + checkedId, new IllegalArgumentException());
-//                break;
-//        }
+        switch (checkedId) {
+            case R.id.thickness1:
+                paint.setStrokeWidth(20);
+                break;
+            case R.id.thickness2:
+                paint.setStrokeWidth(50);
+                break;
+            case R.id.thickness3:
+                paint.setStrokeWidth(130);
+                break;
+        }
     }
 
 
@@ -650,6 +683,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     if (time > 200) {
                         //it's long click
                     } else {
+                        foregroundView.setOnTouchListener(null);
                         mCurrentFocusView= imageView;
                         if (mAdjustSquareList.contains(imageView)) {
                             mFocusSquareList.clear();
@@ -749,8 +783,8 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     downX = event.getX();
                     downY = event.getY();
                     downTime = System.currentTimeMillis();
-                    if (x > b.start.x - 60 && x < b.start.x + 60
-                            && y > b.start.y - 60 && y < b.start.y + 60) {
+                    if (x > b.start.x - 120 && x < b.start.x + 120
+                            && y > b.start.y - 120 && y < b.start.y + 60) {
                         b.setFocusPoint("start");
                         b.invalidate();
                     } else if (x > b.end.x - 60 && x < b.end.x + 60
@@ -768,6 +802,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 case MotionEvent.ACTION_UP:
                     long time = System.currentTimeMillis() - downTime;
                     if (time <= 200) {
+                        foregroundView.setOnTouchListener(null);
                         mCurrentFocusView=b;
                         if (mAdjustCurveList.contains(b)) {
                             mFocusCurveList.clear();
@@ -803,6 +838,12 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                         b.focusPoint.y=y;
                     }
                     b.invalidate();
+                    startX=b.start.x;
+                    startY=b.start.y;
+                    controlX=b.control.x;
+                    controlY=b.control.y;
+                    endX=b.end.x;
+                    endY=b.end.y;
                     return true;
                 case MotionEvent.ACTION_MOVE:
 
@@ -1053,6 +1094,10 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
             mCurrentScale = 1f;
             refreshSquareViews();
             foregroundView.setOnTouchListener(null);
+            foregroundView.setAlpha(40);
+            modeText.setVisibility(View.VISIBLE);
+
+
             foregroundView.setVisibility(View.VISIBLE);
             for (View view:mSquareList){
                 view.setVisibility(View.VISIBLE);
@@ -1072,6 +1117,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 try {
                     URL m_url = new URL(urlInfo.getLayerURL());
                     con = (HttpURLConnection) m_url.openConnection();
+                    con.setUseCaches(false);
                     InputStream in = con.getInputStream();
                     BitmapFactory.Options options = new BitmapFactory.Options();
                     options.inJustDecodeBounds = false;
@@ -1103,6 +1149,9 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     urlInfo= gson.fromJson(response, URLInfo.class);
                     Picasso.with(backgroundView.getContext())
                             .load(urlInfo.getBackgroundURL())
+                            .skipMemoryCache()
+                            .memoryPolicy(MemoryPolicy.NO_CACHE, MemoryPolicy.NO_STORE)
+                            .networkPolicy(NetworkPolicy.NO_CACHE)
                             .error(R.drawable.example)
                             .into(backgroundView);
                     parseType = PARSE_SQUARE;
@@ -1124,6 +1173,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 case LOAD_IMAGE:
                     imageH=foregroundView.getHeight();
                     imageW=foregroundView.getWidth();
+                    if (mFreespace!=null) mFreespace.recycle();
                     mFreespace = Bitmap.createScaledBitmap(mTempBitmap, imageW, imageH, true);
                     canvas=new Canvas(mFreespace);
                     path = new Path();
@@ -1154,6 +1204,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     connection.setRequestMethod("GET");
                     connection.setConnectTimeout(8000);
                     connection.setReadTimeout(8000);
+                    connection.setUseCaches(false);
 
                     InputStream in=connection.getInputStream();
                     //下面对获取到的输入流进行读取
@@ -1356,7 +1407,9 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                 byte[] buffer;
                 int maxBufferSize = 1 * 1024 * 1024;
                 String[] parts = selectedFilePath.split("/");
-                final String fileName = parts[parts.length - 1];
+                String fileName = parts[parts.length - 1];
+                parts = fileName.split("-");
+                fileName=parts[0];
                 try {
                     URL url = new URL("http://139.196.85.93/UploadToServer.php");
                     connection = (HttpURLConnection) url.openConnection();
@@ -1373,7 +1426,7 @@ public class MainActivity extends FragmentActivity implements View.OnClickListen
                     //writing bytes to data outputstream
                     dataOutputStream.writeBytes(twoHyphens + boundary + lineEnd);
                     dataOutputStream.writeBytes("Content-Disposition: form-data; name=\"uploaded_file\";filename=\""
-                            + fileName+ "\"" + lineEnd);
+                            + fileName+   "\"" + lineEnd);
                     dataOutputStream.writeBytes(lineEnd);
                     dataOutputStream.write(baos.toByteArray());
                     bufferSize = maxBufferSize;

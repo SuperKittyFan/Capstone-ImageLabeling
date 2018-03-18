@@ -222,32 +222,18 @@
                       android:layout_height="0dp"
                       android:layout_weight="1"
                       android:orientation="horizontal">
-            <RelativeLayout
-                android:id="@+id/xuxian"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1">
-                <ImageView android:id="@+id/xuxianIcon"
-                           android:layout_width="100px"
-                           android:layout_height="100px"
-                           android:layout_centerInParent="true"
-                           android:scaleType="fitXY"
-                           />
-            </RelativeLayout>
+            <TextView
+                android:id="@+id/modeText"
+                android:layout_width="314px"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="5dp"
+                android:layout_marginStart="5dp"
+                android:layout_toEndOf="@+id/textOne"
+                android:layout_toRightOf="@+id/textOne"
+                android:textColor="#EA5246"
+                android:textSize="18sp"
+                android:textStyle="bold|italic" />
 
-            <RelativeLayout
-                android:visibility="invisible"
-                android:id="@+id/empty"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1">
-                <ImageView android:id="@+id/emptyIcon"
-                           android:layout_width="100px"
-                           android:layout_height="100px"
-                           android:background="@drawable/border_shape_white"
-                           android:layout_centerInParent="true"
-                           android:scaleType="fitXY"/>
-            </RelativeLayout>
         </LinearLayout>
     </LinearLayout>
 </ScrollView>
