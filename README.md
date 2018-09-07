@@ -21,8 +21,7 @@ In this case of auto driving, the image labeling data that frames the objects an
 
 1. Request Image from Server
 
-<img src="
-https://charleszhu.weebly.com/uploads/8/3/6/2/83625186/capstone4_orig.png" alt="drawing" width="600"/>
+<img src="https://charleszhu.weebly.com/uploads/8/3/6/2/83625186/capstone4_orig.png" alt="drawing" width="600"/>
 
 When users open the app, the app will send request to the server and obtain the information of the first pre-processed image. The original image and free space are both obtained as JPG format. The frames of vehicles and pedestrians as well as lane line curves are in JSON format. The JSON files will be parsed by the app and show on the canvas of the app.
 
