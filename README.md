@@ -72,5 +72,5 @@ Preprocessing: Chen Zhao
 
 Backend: Jingjing Tao
 
-Android Application: [Chen Zhu](zhuchen1033@gmail.com)
+Android Application: Chen Zhu (zhuchen1033@gmail.com)
 
