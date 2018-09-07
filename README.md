@@ -2,7 +2,7 @@
 
 This repository is Android application (Frontend) of 2017 Fall University of Michigan - Shanghai Jiao Tong University Joint Institute Capstone Project (VE450) 
 
-## Introduction of Project & Contributers
+## Introduction of Project
 
 #### Project Background
 
@@ -54,12 +54,23 @@ its type and which mode it’s in: yellow for “car”, green for “person”,
 time).
 
 3. Upload results
+
 When users complete labeling one image, the app can convert frames and lane line curves as
 JSON and upload the modified version to back end and then obtain the next image.
 
 ## Development Environment & How to deploy
 
 * IDE: Android Studio
-* SDK: 
+* SDK: Android 26.0.1
+* Build Gradle: 2.3.3
+* Dependencies: See build.gradle in /app directory
+* **How to deploy**: Open the repository using Android Studio
 
-## Contact Information
+## Contributers & Contact Information
+
+Preprocessing: Chen Zhao
+
+Backend: Jingjing Tao
+
+Android Application: [Chen Zhu](zhuchen1033@gmail.com)
+
